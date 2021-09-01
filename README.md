@@ -1,0 +1,2 @@
+# MagicHome Core
+ 
