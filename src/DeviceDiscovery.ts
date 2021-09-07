@@ -1,14 +1,14 @@
-import dgram from 'dgram';
+import * as dgram from 'dgram';
 import { Network } from './Network';
 
-import { IDeviceDiscoveredProps } from '../magichome-interface/types';
+import { IDeviceDiscoveredProps } from './types';
 
 const BROADCAST_PORT = 48899;
 const BROADCAST_MAGIC_STRING = 'HF-A11ASSISTHREAD';
 
 export class DeviceDiscovery {
-  private count = 1;
 
+  public count = 1;
   async scan(timeout = 500): Promise<IDeviceDiscoveredProps[]> {
 
     return new Promise((resolve, reject) => {
@@ -61,5 +61,4 @@ export class DeviceDiscovery {
       }, timeout);
     });
   } 
-
 }
