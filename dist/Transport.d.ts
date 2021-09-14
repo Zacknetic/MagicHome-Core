@@ -12,19 +12,5 @@ export declare class Transport {
     send(buffer: any, useChecksum?: boolean, _timeout?: number): Promise<any>;
     write(buffer: any, useChecksum?: boolean, _timeout?: number): Promise<void>;
     read(_timeout?: number): Promise<unknown>;
-    getState(_timeout?: number): Promise<{
-        debugBuffer: any;
-        controllerHardwareVersion: any;
-        isOn: boolean;
-        RGB: {
-            red: any;
-            green: any;
-            blue: any;
-        };
-        whiteValues: {
-            warmWhite: any;
-            coldWhite: any;
-        };
-        controllerFirmwareVersion: any;
-    }>;
+    getState(_timeout?: number): Promise<any>;
 }

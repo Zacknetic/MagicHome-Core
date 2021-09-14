@@ -6,10 +6,7 @@ import { IDeviceDiscoveredProps } from './types';
 const BROADCAST_PORT = 48899;
 const BROADCAST_MAGIC_STRING = 'HF-A11ASSISTHREAD';
 
-export class DeviceDiscovery {
-
-  public count = 1;
-  async scan(timeout = 500): Promise<IDeviceDiscoveredProps[]> {
+  export async function scan(timeout = 500): Promise<IDeviceDiscoveredProps[]> {
 
     return new Promise((resolve, reject) => {
       const userInterfaces = Network.subnets();
@@ -61,4 +58,4 @@ export class DeviceDiscovery {
       }, timeout);
     });
   } 
-}
+

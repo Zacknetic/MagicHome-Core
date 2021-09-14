@@ -1,1 +1,2 @@
-export * from './DeviceDiscovery';
+export { scan } from './DeviceDiscovery';
+export * from './Transport';
