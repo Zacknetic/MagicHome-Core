@@ -1,5 +1,3 @@
-import { existsSync, readFileSync } from 'fs';
-
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -136,33 +134,3 @@ export function convertHSLtoRGB ({hue, saturation, luminance}) {
 }
 //=================================================
 // End Convert HSLtoRGB //
-
-export function parseJson<T>(value: string, replacement: T): T {
-  try {
-    return <T>JSON.parse(value);
-  } catch (_error) {
-    return replacement;
-  }
-}
-
-export function loadJson<T>(file: string, replacement: T): T {
-  if (!existsSync(file)) {
-    return replacement;
-  }
-  return parseJson<T>(readFileSync(file).toString(), replacement);
-}
-
-//Unused
-
-/*
-export function delayToSpeed(delay: never) {
-  let clamped = clamp(delay, 1, 31);
-  clamped -= 1; // bring into interval [0, 30]
-  return 100 - (clamped / 30) * 100;
-}
-
-export function speedToDelay(speed: never) {
-  const clamped = clamp(speed, 0, 100);
-  return 30 - (clamped / 100) * 30 + 1;
-}
-*/
