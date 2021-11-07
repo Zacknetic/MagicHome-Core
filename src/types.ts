@@ -3,3 +3,13 @@ export interface IDeviceDiscoveredProps {
     uniqueId: string;
     modelNumber: string;
 }
+
+export interface ICommandOptions {
+    timeoutMS?: number;
+    bufferMS?: number;
+    colorMask?: number;
+    remainingRetries?: number;
+    maxRetries?: number;
+    isAnimationFrame?: boolean;
+    isPowerCommand?: boolean;
+}
