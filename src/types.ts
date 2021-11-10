@@ -1,15 +1,107 @@
+export const DEVICE_COMMANDS = {
+    COMMAND_POWER_ON: [0x71, 0x23, 0x0f],
+    COMMAND_POWER_OFF: [0x71, 0x24, 0x0f],
+    COMMAND_QUERY_STATE: [0x81, 0x8a, 0x8b]
+}
+
+export const EventNumber = new Map([
+    [-6, 'command/query timed out'],
+    [-5, 'duplicate power command'],
+    [-4, 'incorrect device state, insufficient retries'],
+    [-3, 'incorrect device state, no retries requested'],
+    [-2, 'cannot write, device busy'],
+    [-1, 'unknown failure'],
+    [0, 'task failed successfully'],
+    [1, 'device responded with valid state'],
+]);
+
 export interface IDeviceDiscoveredProps {
     ipAddress: string;
     uniqueId: string;
     modelNumber: string;
 }
 
+export const COMMAND_TYPE = {
+    POWER_COMMAND: 'powerCommand',
+    COLOR_COMMAND: 'colorCommand',
+    ANIMATION_FRAME: 'animationFrame',
+    QUERY_COMMAND: 'queryCommand',
+}
+/**
+ * @field timeoutMS?: number
+ * @field bufferMS?: number
+ * @field commandType?: number
+ * @field isEightByteProtocol?: boolean
+ * @field maxRetries: number
+ */
 export interface ICommandOptions {
-    timeoutMS?: number;
-    bufferMS?: number;
-    colorMask?: number;
+    readonly timeoutMS?: number;
+    readonly bufferMS?: number;
+    readonly commandType: string;
+    readonly isEightByteProtocol?: boolean;
+    readonly maxRetries: number;
+}
+
+export const CommandOptionDefaults: ICommandOptions = {
+    timeoutMS: 50,
+    bufferMS: 20,
+    commandType: 'powerCommand',
+    isEightByteProtocol: false,
+    maxRetries: 0,
+}
+
+export interface IDeviceCommand {
+    readonly isOn: boolean;
+    readonly RGB: IColorRGB;
+    readonly CCT: IColorCCT;
+    readonly colorMask: number;
+}
+
+export interface ILEDState {
+    readonly isOn: boolean;
+    readonly RGB: IColorRGB;
+    readonly CCT: IColorCCT;
+}
+
+export interface IColorRGB {
+    readonly red: number;
+    readonly green: number;
+    readonly blue: number;
+}
+
+export interface IColorCCT {
+    readonly warmWhite: number;
+    readonly coldWhite: number;
+}
+
+export interface IDeviceState {
+    LEDState: ILEDState;
+    controllerHardwareVersion?: number;
+    controllerFirmwareVersion?: number;
+    rawData?: Buffer;
+}
+
+export interface ICommandResponse {
+    readonly eventNumber?: number;
+    readonly deviceCommand: IDeviceCommand | null | string;
+    readonly deviceResponse: IDeviceState | null | string;
+}
+
+export interface IQueueOptions {
+    concurrency?: number;
+    timeout?: number;
+    autoStart?: boolean;
+    interval?: number
+}
+/**
+ * @field timeoutMS?: number
+ * @field intervalMS?: number
+ * @field remainingRetries?: number
+ * @field maxRetries: number
+ */
+export interface IPromiseOptions {
+    readonly timeoutMS?: number;
+    readonly intervalMS?: number
     remainingRetries?: number;
-    maxRetries?: number;
-    isAnimationFrame?: boolean;
-    isPowerCommand?: boolean;
+    readonly maxRetries: number;
 }

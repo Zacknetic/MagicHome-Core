@@ -1,78 +1,79 @@
-export { scan } from './DeviceDiscovery';
-export * from './Transport'
+// export { scan } from './DeviceDiscovery';
+import { DeviceInterface } from './DeviceInterface';
+import { ICommandOptions, IDeviceCommand } from './types';
 
-import { Transport } from './Transport'
-// import { Transport2 } from './Transport2'
-const host = '192.168.1.16'
-// const transport2 = new Transport2(host);
-const transport = new Transport(host);
-async function start() {
-    console.log('start')
-    //const state = await transport2.queryState()
-    const state = await transport.getState()
-    console.log(state)
+async function main() {
+    const deviceInterface = new DeviceInterface('192.168.1.20')
+    let deviceCommand: IDeviceCommand = { isOn: true, RGB: { red: 255, green: 0, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xFF }
+    let commandOptions: ICommandOptions = { commandType: 'colorCommand', maxRetries: 5 }
+    let res1 = await deviceInterface.sendCommand(deviceCommand, commandOptions)
 
+    console.log('first')
+
+    deviceCommand = { isOn: true, RGB: { red: 0, green: 255, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xFF }
+    commandOptions = { commandType: 'colorCommand', maxRetries: 5 }
+    let res2 = await deviceInterface.sendCommand(deviceCommand, commandOptions)
+    console.log('second')
+
+    deviceCommand = { isOn: false, RGB: { red: 0, green: 255, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xFF }
+    commandOptions = { commandType: 'powerCommand', maxRetries: 5 }
+    let res3 = await deviceInterface.sendCommand(deviceCommand, commandOptions)
+    console.log('third')
+
+    console.log('results', res1, res2, res3)
 }
 
-start()
+main()
 
-import { scan } from './DeviceDiscovery';
+// deviceCommand = {isOn: false, RGB: {red: 0, green: 255, blue: 0}, CCT: {warmWhite: 0, coldWhite: 0}, colorMask: 0xFF}
+// commandOptions = {commandType: 'powerCommand', maxRetries: 5}
+// deviceInterface.sendCommand(deviceCommand, commandOptions).catch(error => console.log(error))
+// import { ICommandResponse, IPromiseOptions } from './types';
 
-(async () => {
-    const test = await scan(2000);
-    console.log(test)
-})()
+// const queue = new PromiseQueue({});
+// const queue2 = new PromiseQueue({});
+// console.log('start')
+// const commandResponse: ICommandResponse = {deviceCommand: '[0xFF, 0x00, 0xFF]', deviceResponse: '[0xFF, 0x00, 0xFF]'}
 
+// function test(str) {
+//     return commandResponse;
+// }
+// const promiseOptions: IPromiseOptions = { timeoutMS: 500, intervalMS: 50, maxRetries: 5 }
 
-// import Queue from 'queue-promise';
+// const startTime = Date.now();
+// async function main() {
+//     let res = queue.add(() => { return test('foo1') }, promiseOptions);
+//     let res2 = queue.add((() => {
+//         return new Promise((resolve, reject) => {
+//             setTimeout(() => {
+//                 reject(test('bar1'));
+//             }, 2000);
+//         })
+//     }), promiseOptions);
+//     res.then(result => console.log(result, Date.now() - startTime)).catch((reason) => console.log('caught: foo1', reason))
+//     res2.then(result => console.log(result, Date.now() - startTime)).catch((reason) => console.log('caught:bar1', reason))
+// }
+// async function main2() {
 
-// function successTask(timeout = 500) {
-//   return new Promise((resolve, reject) => setTimeout(resolve, timeout));
+//     let res = queue2.add((() => {
+//         return new Promise((resolve, reject) => {
+
+//             setTimeout(() => {
+//                 reject(test('foo2'));
+//             }, 2000);
+//         })
+
+//     }), promiseOptions);
+//     let res2 = queue2.add((() => {
+//         return test('bar2');
+//     }), promiseOptions);
+//     res.then(result => console.log(result, Date.now() - startTime)).catch((reason) => console.log('caught: foo2', reason))
+//     res2.then(result => console.log(result, Date.now() - startTime)).catch((reason) => console.log('caught:bar2', reason))
 // }
 
-// function failureTask(timeout = 500) {
-//   return new Promise((resolve, reject) => setTimeout(reject, timeout));
+// async function go() {
+//     main()
+//     main2()
 // }
 
-// const queue = new Queue({
-//   concurrent: 1,
-//   interval: 1000,
-//   start: true,
-// });
-
-// queue.on("start", () => {
-//   console.debug("Queue started");
-// });
-
-// queue.on("stop", () => {
-//   console.debug("Queue stopped");
-// });
-
-// queue.on("end", () => {
-//   console.debug("Queue finished");
-// });
-
-// queue.on("dequeue", () => {
-//   console.debug("Queue dequeued a task");
-// });
-
-// queue.on("resolve", (data) => {
-//   console.debug("Resolve", data);
-// });
-
-// queue.on("reject", (error) => {
-//   console.debug("Reject", error);
-// });
-
-// queue.enqueue(successTask);
-// queue.enqueue(successTask);
-// queue.enqueue(failureTask);
-// queue.enqueue(failureTask);
-
-// // (async function () {
-// //   while (queue.shouldRun) {
-// //     const result = await queue.dequeue();
-
-// //     console.debug("Dequeue result", result);
-// //   }
-// // })();
+// go()
