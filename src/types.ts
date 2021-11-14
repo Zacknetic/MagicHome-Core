@@ -82,17 +82,18 @@ export interface IDeviceState {
 }
 
 export interface ICommandResponse {
-    readonly eventNumber?: number;
+    eventNumber: number;
     readonly deviceCommand: IDeviceCommand | null | string;
-    readonly deviceResponse: IDeviceState | null | string;
+    deviceResponse: IDeviceState | null | string;
+    queueSize: number;
 }
 
 export interface IQueueOptions {
-    concurrency?: number;
     timeout?: number;
     autoStart?: boolean;
     interval?: number
 }
+
 /**
  * @field timeoutMS?: number
  * @field intervalMS?: number
@@ -105,3 +106,38 @@ export interface IPromiseOptions {
     remainingRetries?: number;
     readonly maxRetries: number;
 }
+
+/*******************************MOCK SETTINGS****************** */
+
+export interface IMockDeviceSettings {
+    LEDState: ILEDState;
+    controllerHardwareVersion: number;
+    controllerFirmwareVersion: number;
+    responseTimeMS: number;
+}
+
+export interface IMockCommandSettings {
+    responseTimeMS: number;
+    numFailures: number;
+}
+
+
+export interface IMockLEDState {
+    isOn: boolean;
+    RGB: IColorRGB;
+    CCT: IColorCCT;
+}
+
+export const DefaultAccessoryCommand = {
+    isOn: false,
+    RGB: {
+        red: 0,
+        green: 0,
+        blue: 0
+    },
+
+    CCT: {
+        warmWhite: 0,
+        coldWhite: 0,
+    }
+};

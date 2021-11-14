@@ -6,12 +6,12 @@
     "sourceMap": true,
     "target": "es5",
     "lib": [
-      "es5", "es6", "dom", "dom.iterable"
+      "es2020", "es6", "dom", "dom.iterable"
     ],
     "declaration": true,
     "outDir": "./dist"
   },
   "include": [
-    "src/**/*",
+    "src/**/*"
   ]
 }

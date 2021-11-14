@@ -9,6 +9,9 @@
   ],
   "scripts": {
     "build": "tsc",
+    "test2": "ts-mocha src/tests/*.test.ts -w --watch-extensions ts",
+    "test:watch": "ts-mocha --watch-extensions ts --watch --watch-files src 'src/tests/*.test.ts'",
+    "test": "nodemon ./test/async.js",
     "watch": "npm run build && npm link && nodemon || exit 1"
   },
   "repository": {
@@ -21,18 +24,19 @@
   "author": "Zachary Avino",
   "license": "MIT",
   "dependencies": {
-    "color-convert": "^2.0.1",
     "dgram": "^1.0.1",
     "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
-    "@types/node": "^12.0.12",
     "ts-node": "^8.3.0"
   },
   "devDependencies": {
-    "@types/node": "^14.17.15",
+    "@types/expect": "^24.3.0",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^14.17.33",
     "eslint": "^7.21.0",
     "nodemon": "^2.0.7",
     "rimraf": "^3.0.2",
+    "ts-mocha": "^8.0.0",
     "typescript": "^4.4.4"
   }
 }

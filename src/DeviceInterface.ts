@@ -5,9 +5,9 @@
 import { ICommandOptions, ICommandResponse, IDeviceCommand, IPromiseOptions } from './types'
 import { Transport } from './Transport'
 import * as types from './types';
-import { PromiseQueue } from './PromiseQueue';
+import { CommandQueue } from './CommandQueue';
 
-const promiseQueue = new PromiseQueue({
+const promiseQueue = new CommandQueue({
     concurrency: 1,
     interval: 2000,
     timeout: 1000
@@ -32,13 +32,32 @@ export class DeviceInterface {
         this.transport = new Transport(ipAddress);
     }
 
+
+    // getState(_timeout = 500): Promise<Buffer> {
+    //     return new Promise((resolve, reject) => {
+
+    //         const buffer = Buffer.from(COMMAND_QUERY_STATE)
+    //         const data = this._sendCommand(buffer, true, resolve, reject, _timeout);
+    //         if (data == null) {
+    //             return null;
+    //         }
+    //         return data;
+    //     })
+    // }
+
+    // sendState(byteArray, _timeout = 100) {
+    //     return new Promise((resolve, reject) => {
+    //         const buffer = Buffer.from(byteArray)
+    //         this._sendCommand(buffer, false, resolve, reject, _timeout);
+    //     })
+    // }
+
     public sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
-        const commandBuffer = this.commandToBuffer(deviceCommand, commandOptions);
-const promiseOptions: IPromiseOptions = {
+        const commandBuffer = this.commandToByteArray(deviceCommand, commandOptions);
+        const promiseOptions: IPromiseOptions = {
             maxRetries: commandOptions.maxRetries,
             timeoutMS: commandOptions.timeoutMS,
         }
-        promiseQueue.add(() => { return this.transport.send(commandBuffer, promiseOptions, promiseQueue) }, promiseOptions)
     }
 
     /**
@@ -51,18 +70,18 @@ const promiseOptions: IPromiseOptions = {
             commandType: QUERY_COMMAND, timeoutMS, maxRetries: 20
         }
 
-        const commandBuffer = this.commandToBuffer(null, commandOptions);
+        const commandBuffer = this.commandToByteArray(null, commandOptions);
         const commandResponse = await this.transport.send(commandBuffer);
         return commandResponse;
     }
 
-    private commandToBuffer(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
+    private commandToByteArray(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
         let commandByteArray;
 
         switch (commandOptions.commandType) {
             case POWER_COMMAND:
                 if (!this.testLatestPowerCommand(deviceCommand.isOn ?? null)) {
-                    const commandResponse: ICommandResponse = { eventNumber: -5, deviceResponse: null, deviceCommand }
+                    const commandResponse: ICommandResponse = { eventNumber: -5, deviceResponse: null, deviceCommand, queueSize: null }
                     throw commandResponse;
                 }
                 //construct the power command byte array
@@ -74,11 +93,11 @@ const promiseOptions: IPromiseOptions = {
                 //construct the color command byte array
                 const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite } } = deviceCommand;
 
-                // if (commandOptions.isEightByteProtocol) {
+                if (commandOptions.isEightByteProtocol) {
                     commandByteArray = [0x31, red, green, blue, red, deviceCommand.colorMask, 0x0F]; //8th byte checksum calculated later in send()
-                // } else {
-                //     commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, deviceCommand.colorMask, 0x0F]; //9 byte
-                // }
+                } else {
+                    commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, deviceCommand.colorMask, 0x0F]; //9 byte
+                }
                 break;
 
             case QUERY_COMMAND:
@@ -91,12 +110,11 @@ const promiseOptions: IPromiseOptions = {
                 //construct animation frame byte array
                 break;
             default:
-                const commandResponse: ICommandResponse = { eventNumber: -1, deviceResponse: null, deviceCommand: null }
+                const commandResponse: ICommandResponse = { eventNumber: -1, deviceResponse: null, deviceCommand: null, queueSize: null }
                 throw commandResponse;
         }
 
-        const buffer = Buffer.from(commandByteArray);
-        return buffer;
+        return commandByteArray;
     }
 
     testLatestPowerCommand(isOn: boolean) {
