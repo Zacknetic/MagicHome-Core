@@ -1,184 +1,137 @@
-// import * as net from './tests/mock-net';
-import { ICommandOptions } from './types';
-import { checksum } from './utils';
+import net from 'net';
+import Queue from 'promise-queue';
+import { bufferFromByteArray } from './utils/miscUtils';
 
-import { MockNet } from './tests/mock-net';
-// import Net from Net;
-const net = new MockNet();
-
-const COMMAND_QUERY_STATE = [0x81, 0x8a, 0x8b];
-
-const COMMAND_INTERVAL = 30;
-const RESPONSE_TIMEOUT = 500;
+const COMMAND_QUERY_STATE: Uint8Array = Uint8Array.from([0x81, 0x8a, 0x8b]);
 
 const PORT = 5577;
 
-// const SLOW_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 20, bufferMS: 0, timeoutMS: 2000 };
-// const MEDIUM_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 100 };
-// const FAST_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 20 };
+function wait(emitter: net.Socket, eventName: string, timeout: number) {
 
+  return new Promise((resolve, reject) => {
+    let complete = false;
+
+    const waitTimeout: any = setTimeout(() => {
+      complete = true; // mark the job as done
+      resolve(null);
+    }, timeout);
+
+    // listen for the first event, then stop listening (once)
+    emitter.once(eventName, (args: any) => {
+      clearTimeout(waitTimeout); // stop the timeout from executing
+      if (!complete) {
+        complete = true; // mark the job as done
+        resolve(args);
+      }
+    });
+
+    emitter.once('close', () => {
+      clearTimeout(waitTimeout); // stop the timeout from executing
+
+      // if the socket closed before we resolved the promise, reject the promise
+      if (!complete) {
+        complete = true;
+        reject(null);
+      }
+    });
+
+    // handle the first error and reject the promise
+    emitter.on('error', (e) => {
+      clearTimeout(waitTimeout); // stop the timeout from executing
+
+      if (!complete) {
+        complete = true;
+        reject(e);
+      }
+    });
+
+  });
+}
 
 export class Transport {
-  protected host;
-  protected commandQueue = []
-  protected eventEmitter = null;
-  protected receivedData = Buffer.alloc(0);
-  protected receiveTimeout = null;
-  protected connectTimeout = null;
-  protected commandTimeout = null;
-  protected preventDataSending = false;
-  constructor(host) {
+  host: any;
+  socket: any;
+  queue: any;
+  /**
+   * @param {string} host - hostname
+   * @param {number} timeout - connection timeout (in seconds)
+   */
+  constructor(host: any) {
     this.host = host;
-
+    this.socket = null;
+    this.queue = new Queue(1, Infinity); // 1 concurrent, infinite size
   }
 
-  async _sendCommand(buffer, expect_reply, resolve, reject, socketConnectionTimeout = null) {
-    // calculate checksum
-    let checksum = 0;
-    for (let byte of buffer.values()) {
-      checksum += byte;
-    }
-    checksum &= 0xFF;
-    let command = Buffer.concat([buffer, Buffer.from([checksum])]);
+  async connect(fn: any, _timeout = 200) {
+    const options = {
+      host: this.host,
+      port: PORT,
+      timeout: _timeout,
+    };
 
-    if (this.commandQueue.length == 0 && this.eventEmitter == null) {
-      this.commandQueue.push({ expect_reply, resolve, reject, command, firstCommand: true });
-
-      this.preventDataSending = false;
-      this.eventEmitter = net.connect(PORT, this.host);
-
-      this.eventEmitter.on('connect', () => {
-        if (this.connectTimeout != null) {
-          clearTimeout(this.connectTimeout);
-          this.connectTimeout = null;
-        }
-
-        this.eventEmitter.on('error', (err) => {
-          this._socketErrorHandler(err, reject);
-        });
-
-        this.eventEmitter.on('data', (data) => {
-          this._receiveData(false, data);
-        });
-        if (!this.preventDataSending) {
-          this._handleNextCommand();
-        }
-      });
-
-      if (socketConnectionTimeout) {
-        this.connectTimeout = setTimeout(() => {
-          this._socketErrorHandler(new Error("Connection timeout reached"), reject);
-        }, socketConnectionTimeout);
-
+    let result;
+    try {
+      if (!this.socket) {
+        this.socket = net.connect(options);
+        await wait(this.socket, 'connect', _timeout = 200);
       }
-    } else {
-      this.commandQueue.push({ expect_reply, resolve, reject, command });
-    }
-    return this.eventEmitter;
-  }
-
-
-  _receiveData(empty, data?) {
-    if (this.commandTimeout !== null) {
-      clearTimeout(this.commandTimeout);
-      this.commandTimeout = null;
-    }
-
-    if (empty) {
-      let finished_command = this.commandQueue[0];
-
-      if (finished_command != undefined) {
-        const resolve = finished_command.resolve;
-
-        if (finished_command.expect_reply) {
-          if (resolve != undefined) {
-            resolve(this.receivedData);
-          }
-        } else {
-          resolve(this.commandQueue.length)
-        }
+      result = await fn();
+      return result;
+    } catch (e) {
+      this.disconnect();
+      const { code, address, port } = e;
+      if (code) {
+        // No need to show error here, shown upstream
+        // this.log.debug(`Unable to connect to ${address} ${port} (code: ${code})`);
+      } else {
+        // this.logs.error('transport.ts error:', e);
       }
-
-      this.receivedData = Buffer.alloc(0);
-
-      this.commandQueue.shift();
-      this._handleNextCommand();
-
-    } else {
-      this.receivedData = Buffer.concat([this.receivedData, data]);
-      if (this.receiveTimeout != null) clearTimeout(this.receiveTimeout);
-
-      this.receiveTimeout = setTimeout(() => {
-        this._receiveData(true);
-      }, RESPONSE_TIMEOUT);
-    }
-  }
-
-  _handleCommandTimeout() {
-    this.commandTimeout = null;
-
-    let timedout_command = this.commandQueue[0];
-
-    if (timedout_command !== undefined) {
-      const reject = timedout_command.reject;
-      if (reject != undefined) {
-        reject(new Error("Command timed out"));
+    } finally {
+      if (this.queue.getQueueLength() === 0) {
+        this.disconnect();
       }
     }
 
-    this.receivedData = Buffer.alloc(0); // just for good measure
-
-    this._handleNextCommand();
+    return null;
   }
 
-  _handleNextCommand(timeout = null) {
 
-    if (this.commandQueue.length == 0) {
-      this.closeSocket();
-    } else {
-      let cmd = this.commandQueue[0];
 
-      let commandInterval = cmd.firstCommand == true ? 0 : COMMAND_INTERVAL;
-      setTimeout(() => {
-        if (!cmd.expect_reply) {
-          this.eventEmitter.write(cmd.command, "binary", () => {
-            this._receiveData(true);
-          });
-        } else {
-          this.eventEmitter.write(cmd.command, "binary", () => {
-            if (timeout === null) return;
+  send(byteArray: any, _timeout?) {
+    return this.queue.add(async () => (
+      this.connect(async () => {
+        await this.write(byteArray);
+        if (!_timeout) return null
+        return this.read(_timeout);
+      })
+        .then(response => {
+          return { response, queueSize: this.queue.getQueueLength() }
+        })
+    ));
+  }
 
-            this.commandTimeout = setTimeout(() => {
-              this._handleCommandTimeout();
-            }, timeout);
-          });
-        }
-      }, commandInterval);
+  async write(byteArray: any, _timeout = 200) {
+    let sent;
+
+    const payload = bufferFromByteArray(byteArray)
+    sent = this.socket.write(payload);
+
+
+    // wait for drain event which means all data has been sent
+    if (sent !== true) {
+      await wait(this.socket, 'drain', _timeout);
     }
-
   }
 
-  _socketErrorHandler(err, reject) {
-    this.preventDataSending = true;
+  async read(_timeout = 200) {
+    const data = await wait(this.socket, 'data', _timeout);
 
-    reject(err);
-
-    this.closeSocket()
-    // also reject all commands currently in the queue
-    for (let c of this.commandQueue) {
-      let reject = c.reject;
-      if (reject != undefined) {
-        reject(err);
-      }
-    }
-
-    this.commandQueue = []; // reset commandqueue so commands dont get stuck if the controller becomes unavailable
+    return data;
   }
-
-  public closeSocket() {
-    if (this.eventEmitter != null) this.eventEmitter.end();
-    this.eventEmitter = null;
+  disconnect() {
+    this.socket.end();
+    this.socket.destroy();
+    this.socket = null;
   }
 
 }
-

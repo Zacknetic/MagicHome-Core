@@ -1,195 +1,135 @@
-// const RESPONSE_TIMEOUT = 500; // 0.5 sec
-// const PORT = 5577;
-// import * as net from 'net';
-// import * as Queue from 'promise-queue';
+import net from 'net';
+import Queue from 'promise-queue';
+import { _ } from 'lodash'
+import { bufferFromByteArray, calcChecksum } from './utils/miscUtils';
+import { ICommandResponse, ITransportResponse } from './types';
 
-// export class Transport2 {
-//     protected address;
-//     protected commandQueue = []
-//     protected socket = null;
-//     protected receivedData = Buffer.alloc(0);
-//     protected receiveTimeout = null;
-//     protected connectTimeout = null;
-//     protected commandTimeout = null;
-//     protected preventDataSending = false;
-//     protected lastColor = { red: 0, green: 0, blue: 0 };
-//     protected lastWW = 0;
-//     protected lastCW = 0;
-//     constructor(_address) {
-//         this.address = _address;
-//     }
+const COMMAND_QUERY_STATE: Uint8Array = Uint8Array.from([0x81, 0x8a, 0x8b]);
 
+const PORT = 5577;
 
-//     static ackMask(mask) {
-//         return {
-//             power: (mask & 0x01) > 0,
-//             color: (mask & 0x02) > 0,
-//             pattern: (mask & 0x04) > 0,
-//             custom_pattern: (mask & 0x08) > 0
-//         };
-//     }
+function wait(emitter: net.Socket, eventName: string, timeout: number) {
 
-//     _receiveData(empty, data?) {
-//         if (this.commandTimeout !== null) { // we have received _something_ so the command cannot timeout anymore
-//             clearTimeout(this.commandTimeout);
-//             this.commandTimeout = null;
-//         }
+    return new Promise((resolve, reject) => {
+        let transportResponse: ITransportResponse;
+        if (timeout <= 0) resolve(_.merge(transportResponse, { eventNumber: 2 }));
+        let complete = false;
 
-//         if (empty) {
-//             // no data, so request is instantly finished
-//             // this can happend when a command is sent without waiting for a reply or when a timeout is reached
-//             let finished_command = this.commandQueue[0];
+        const waitTimeout: any = setTimeout(() => {
+            complete = true; // mark the job as done
+            resolve(null)
+            // reject(_.merge(transportResponse, { eventNumber: -6 }));
+        }, timeout);
 
-//             if (finished_command != undefined) {
-//                 const resolve = finished_command.resolve;
-//                 if (resolve != undefined) {
-//                     resolve(this.receivedData);
-//                 }
-//             }
+        // listen for the first event, then stop listening (once)
+        emitter.once(eventName, (args: any) => {
+            clearTimeout(waitTimeout); // stop the timeout from executing
+            if (!complete) {
+                complete = true; // mark the job as done
+                resolve(args)
+                // resolve(_.merge(transportResponse, { response: args }));
+            }
+        });
 
-//             // clear received data
-//             this.receivedData = Buffer.alloc(0);
+        emitter.once('close', () => {
+            clearTimeout(waitTimeout); // stop the timeout from executing
 
-//             this.commandQueue.shift();
+            // if the socket closed before we resolved the promise, reject the promise
+            if (!complete) {
+                complete = true;
+                reject(null)
+                // reject(_.merge(transportResponse, { eventNumber: -2 }));
+            }
+        });
 
-//             this._handleNextCommand();
-//         } else {
-//             this.receivedData = Buffer.concat([this.receivedData, data]);
+        // handle the first error and reject the promise
+        emitter.on('error', (e) => {
+            clearTimeout(waitTimeout); // stop the timeout from executing
 
-//             if (this.receiveTimeout != null) clearTimeout(this.receiveTimeout);
+            if (!complete) {
+                complete = true;
+                reject(e)
+                // reject(_.merge(transportResponse, { eventNumber: -7 }));
+            }
+        });
 
-//             // since we don't know how long the response is going to be, set a timeout after which we consider the
-//             // whole message to be received
-//             this.receiveTimeout = setTimeout(() => {
-//                 this._receiveData(true);
-//             }, RESPONSE_TIMEOUT);
-//         }
-//     }
+    });
+}
 
-//     _handleCommandTimeout() {
-//         this.commandTimeout = null;
+export class Transport {
+    host: any;
+    socket: any;
+    queue: any;
+    /**
+     * @param {string} host - hostname
+     * @param {number} timeout - connection timeout (in seconds)
+     */
+    constructor(host: any) {
+        this.host = host;
+        this.socket = null;
+        this.queue = new Queue(1, Infinity); // 1 concurrent, infinite size
+    }
 
-//         let timedout_command = this.commandQueue[0];
+    async connect(fn: any, _timeout = 200) {
+        const options = {
+            host: this.host,
+            port: PORT,
+            timeout: _timeout,
+        };
 
-//         if (timedout_command !== undefined) {
-//             const reject = timedout_command.reject;
-//             if (reject != undefined) {
-//                 reject(new Error("Command timed out"));
-//             }
-//         }
+        this.socket = net.connect(options);
+        await wait(this.socket, 'connect', _timeout = 200);
+        return await fn()
+    }
 
-//         this.receivedData = Buffer.alloc(0); // just for good measure
+    disconnect() {
+        this.socket.end();
+        this.socket.destroy();
+        this.socket = null;
+    }
 
-//         this.commandQueue.shift();
+    async send(byteArray: number[], _timeout = 1000, _socketTimeout = 2000) {
 
-//         this._handleNextCommand();
-//     }
+        return this.queue.add(async () => (
+            this.connect(async () => {
+                if (!this.socket) {
+                    await this.write(byteArray);
+                    // const transportResponse: ITransportResponse = this.read(_timeout);
+                    // _.merge(transportResponse, { command: byteArray, queueSize: this.queue.getQueueLength() });
+                    return this.read(_timeout);
 
-//     _handleNextCommand(timeout = null) {
-//         if (this.commandQueue.length == 0) {
-//             if (this.socket != null) this.socket.end();
-//             this.socket = null;
-//         } else {
-//             let cmd = this.commandQueue[0];
+                } else {
+                    await this.write(byteArray);
+                    // const transportResponse: ITransportResponse = this.read(_timeout);
+                    // _.merge(transportResponse, { command: byteArray, queueSize: this.queue.getQueueLength() });
+                    return this.read(_timeout);
+                }
 
-//             if (!cmd.expect_reply) {
-//                 this.socket.write(cmd.command, "binary", () => {
-//                     this._receiveData(true);
-//                 });
-//             } else {
-//                 this.socket.write(cmd.command, "binary", () => {
-//                     if (timeout === null) return;
+            })
 
-//                     this.commandTimeout = setTimeout(() => {
-//                         this._handleCommandTimeout();
-//                     }, timeout);
-//                 });
-//             }
-//         }
-//     }
+        ).finally(() => {
+            if (this.queue.getQueueLength() === 0) this.disconnect();
+        }));
+    }
 
-//     _sendCommand(buf, expect_reply, resolve, reject, timeout = null) {
-//         // calculate checksum
-//         let checksum = 0;
-//         for (let byte of buf.values()) {
-//             checksum += byte;
-//         }
-//         checksum &= 0xFF;
+    async write(buffer: any, useChecksum = true, _timeout = 200) {
 
-//         // append checksum to command buffer
-//         let command = Buffer.concat([buf, Buffer.from([checksum])]);
+        const payload = bufferFromByteArray(buffer);
+        const sent = this.socket.write(payload);
 
-//         if (this.commandQueue.length == 0 && this.socket == null) {
-//             this.commandQueue.push({ expect_reply, resolve, reject, command });
+        console.log(sent) //TODO REMOVE
 
-//             this.preventDataSending = false;
+        // wait for drain event which means all data has been sent
+        if (sent !== true) {
+            await wait(this.socket, 'drain', _timeout);
+        }
+    }
 
-//             this.socket = net.connect(PORT, this.address, () => {
-//                 if (this.connectTimeout != null) {
-//                     clearTimeout(this.connectTimeout);
-//                     this.connectTimeout = null;
-//                 }
+    async read(_timeout = 200) {
+        // const transportResponse: ITransportResponse = {};
+        const data = wait(this.socket, 'data', _timeout);
+        return data;
+        // return _.merge(transportResponse, { reponse: data });
+    }
 
-//                 if (!this.preventDataSending) { // prevent "write after end" errors
-//                     this._handleNextCommand(); // which is the "first" command in this case
-//                 }
-//             });
-
-//             this.socket.on('error', (err) => {
-//                 this._socketErrorHandler(err, reject);
-//             });
-
-//             this.socket.on('data', (data) => {
-//                 this._receiveData(false, data);
-//             });
-
-//             if (timeout) {
-//                 this.connectTimeout = setTimeout(() => {
-//                     this._socketErrorHandler(new Error("Connection timeout reached"), reject);
-//                 }, timeout );
-//             }
-//         } else {
-//             this.commandQueue.push({ expect_reply, resolve, reject, command });
-//         }
-//     }
-
-//     _socketErrorHandler(err, reject) {
-//         this.preventDataSending = true;
-
-//         reject(err);
-
-//         if (this.socket != null) this.socket.end();
-//         this.socket = null;
-
-//         // also reject all commands currently in the queue
-//         for (let c of this.commandQueue) {
-//             let reject = c.reject;
-//             if (reject != undefined) {
-//                 reject(err);
-//             }
-//         }
-
-//         this.commandQueue = []; // reset commandqueue so commands dont get stuck if the controller becomes unavailable
-//     }
-
-
-
-//     /**
-//      * Queries the controller for it's current state
-//      * This method stores the color and ww values for future calls to setColor, setWarmWhite, etc.
-//      * It will also set apply_masks to true for controllers which require it.
-//      * @param {function} callback
-//      * @returns {Promise<QueryResponse>}
-//      */
-//     async queryState() {
-//         let cmd_buf = Buffer.from([0x81, 0x8a, 0x8b]);
-
-//         return new Promise((resolve, reject) => {
-//             this._sendCommand(cmd_buf, true, resolve, reject);
-//         }).then(data => {
-    
-//             return data;
-//         });
-
-//     }
-// }
+}

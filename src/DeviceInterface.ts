@@ -2,16 +2,12 @@
 // const MEDIUM_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 100 };
 // const FAST_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 20 };
 
-import { ICommandOptions, ICommandResponse, IDeviceCommand, IPromiseOptions } from './types'
+import { ICommandOptions, ICommandResponse, IDeviceCommand, IPromiseOptions, ITransportResponse } from './types'
 import { Transport } from './Transport'
-import * as types from './types';
-import { CommandQueue } from './CommandQueue';
 
-const promiseQueue = new CommandQueue({
-    concurrency: 1,
-    interval: 2000,
-    timeout: 1000
-});
+import * as types from './types';
+
+
 
 const RESET_LATEST_POWER_COMMAND_MS = 2000;
 
@@ -22,6 +18,7 @@ const {
 
 export class DeviceInterface {
 
+    protected queueSize = 0;
     protected latestPowerCommand = null;
 
     protected testPowerStateTimeout: NodeJS.Timeout;
@@ -32,32 +29,14 @@ export class DeviceInterface {
         this.transport = new Transport(ipAddress);
     }
 
-
-    // getState(_timeout = 500): Promise<Buffer> {
-    //     return new Promise((resolve, reject) => {
-
-    //         const buffer = Buffer.from(COMMAND_QUERY_STATE)
-    //         const data = this._sendCommand(buffer, true, resolve, reject, _timeout);
-    //         if (data == null) {
-    //             return null;
-    //         }
-    //         return data;
-    //     })
-    // }
-
-    // sendState(byteArray, _timeout = 100) {
-    //     return new Promise((resolve, reject) => {
-    //         const buffer = Buffer.from(byteArray)
-    //         this._sendCommand(buffer, false, resolve, reject, _timeout);
-    //     })
-    // }
-
-    public sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
-        const commandBuffer = this.commandToByteArray(deviceCommand, commandOptions);
-        const promiseOptions: IPromiseOptions = {
-            maxRetries: commandOptions.maxRetries,
-            timeoutMS: commandOptions.timeoutMS,
-        }
+    public async sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
+        const byteArray = this.commandToByteArray(deviceCommand, commandOptions);
+        const transportResponse: ITransportResponse = await this.transport.send(byteArray, 200)
+        this.queueSize = transportResponse.queueSize ?? this.queueSize;
+        // if (this.queueSize === 0 && commandOptions?.retries > 0) {
+        //     commandOptions.retries--;
+        //     this.sendCommand(deviceCommand, commandOptions)
+        // }
     }
 
     /**
@@ -65,9 +44,10 @@ export class DeviceInterface {
      * @param timeoutMS (default 500ms) duration to wait for device state before returning null
      * @returns ICommandResponse
      */
+
     public async queryState(timeoutMS): Promise<ICommandResponse> {
         const commandOptions: ICommandOptions = {
-            commandType: QUERY_COMMAND, timeoutMS, maxRetries: 20
+            commandType: QUERY_COMMAND, timeoutMS, retries: 20
         }
 
         const commandBuffer = this.commandToByteArray(null, commandOptions);
@@ -81,7 +61,7 @@ export class DeviceInterface {
         switch (commandOptions.commandType) {
             case POWER_COMMAND:
                 if (!this.testLatestPowerCommand(deviceCommand.isOn ?? null)) {
-                    const commandResponse: ICommandResponse = { eventNumber: -5, deviceResponse: null, deviceCommand, queueSize: null }
+                    const commandResponse: ICommandResponse = { eventNumber: -5, deviceState: null, deviceCommand }
                     throw commandResponse;
                 }
                 //construct the power command byte array
@@ -94,13 +74,17 @@ export class DeviceInterface {
                 const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite } } = deviceCommand;
 
                 if (commandOptions.isEightByteProtocol) {
-                    commandByteArray = [0x31, red, green, blue, red, deviceCommand.colorMask, 0x0F]; //8th byte checksum calculated later in send()
+                    commandByteArray = [0x31, red, green, blue, warmWhite, deviceCommand.colorMask, 0x0F]; //8th byte checksum calculated later in send()
                 } else {
                     commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, deviceCommand.colorMask, 0x0F]; //9 byte
                 }
                 break;
 
             case QUERY_COMMAND:
+                if (this.queueSize > 0) {
+                    const commandResponse: ICommandResponse = { eventNumber: 0, deviceState: null, deviceCommand }
+                    throw commandResponse;
+                }
                 //construct query command byte array
                 commandByteArray = COMMAND_QUERY_STATE;
                 break;
@@ -110,7 +94,7 @@ export class DeviceInterface {
                 //construct animation frame byte array
                 break;
             default:
-                const commandResponse: ICommandResponse = { eventNumber: -1, deviceResponse: null, deviceCommand: null, queueSize: null }
+                const commandResponse: ICommandResponse = { eventNumber: -1, deviceState: null, deviceCommand }
                 throw commandResponse;
         }
 
@@ -118,7 +102,11 @@ export class DeviceInterface {
     }
 
     testLatestPowerCommand(isOn: boolean) {
-        if (isOn == this.latestPowerCommand) return false;
+        console.log(this.latestPowerCommand)
+        if (isOn === this.latestPowerCommand) {
+            console.log('DOUBLE POWER COMMAND')
+            return false;
+        }
         this.latestPowerCommand = isOn;
         clearTimeout(this.testPowerStateTimeout);
         this.testPowerStateTimeout = setTimeout(() => {

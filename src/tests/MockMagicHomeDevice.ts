@@ -14,7 +14,7 @@ export class MockMagicHomeDevice {
     constructor() {
         
         this.mockLEDState = DefaultAccessoryCommand;
-        this.mockDeviceSettings =  { LEDState: this.mockLEDState, controllerFirmwareVersion: 4, controllerHardwareVersion: 4, responseTimeMS: 1000};
+        this.mockDeviceSettings =  { LEDState: this.mockLEDState, controllerFirmwareVersion: 4, controllerHardwareVersion: 4, responseTimeMS: 500};
     }
 
     // # sample message for 9-byte LEDENET transmit protocol (w/ checksum at end)

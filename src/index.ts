@@ -1,5 +1,5 @@
 export { scan } from './DeviceDiscovery';
-export * from './Transport'
+export * from './Transport.old'
 
 
 // set env variable to the `tsconfig.json` path before loading mocha (default: './tsconfig.json')

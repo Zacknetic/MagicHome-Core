@@ -5,14 +5,16 @@ export const DEVICE_COMMANDS = {
 }
 
 export const EventNumber = new Map([
+    [-7, 'socket reported error'],
     [-6, 'command/query timed out'],
     [-5, 'duplicate power command'],
     [-4, 'incorrect device state, insufficient retries'],
     [-3, 'incorrect device state, no retries requested'],
-    [-2, 'cannot write, device busy'],
+    [-2, 'socket closed before resolving'],
     [-1, 'unknown failure'],
-    [0, 'task failed successfully'],
+    [0, 'unneccisary query command, query already queued'],
     [1, 'device responded with valid state'],
+    [2, 'read state timeout not requested']
 ]);
 
 export interface IDeviceDiscoveredProps {
@@ -30,7 +32,7 @@ export const COMMAND_TYPE = {
 /**
  * @field timeoutMS?: number
  * @field bufferMS?: number
- * @field commandType?: number
+ * @field commandType?: string
  * @field isEightByteProtocol?: boolean
  * @field maxRetries: number
  */
@@ -39,7 +41,7 @@ export interface ICommandOptions {
     readonly bufferMS?: number;
     readonly commandType: string;
     readonly isEightByteProtocol?: boolean;
-    readonly maxRetries: number;
+    retries: number;
 }
 
 export const CommandOptionDefaults: ICommandOptions = {
@@ -47,7 +49,7 @@ export const CommandOptionDefaults: ICommandOptions = {
     bufferMS: 20,
     commandType: 'powerCommand',
     isEightByteProtocol: false,
-    maxRetries: 0,
+    retries: 0,
 }
 
 export interface IDeviceCommand {
@@ -83,9 +85,16 @@ export interface IDeviceState {
 
 export interface ICommandResponse {
     eventNumber: number;
-    readonly deviceCommand: IDeviceCommand | null | string;
-    deviceResponse: IDeviceState | null | string;
-    queueSize: number;
+    readonly deviceCommand: IDeviceCommand | null;
+    readonly deviceState: IDeviceState | null;
+}
+
+export interface ITransportResponse {
+    eventNumber?: number;
+    command?: number[];
+    response?: any;
+    msg?: string;
+    queueSize?: number
 }
 
 export interface IQueueOptions {

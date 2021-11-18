@@ -1,5 +1,5 @@
-export function parseDeviceState(data: Buffer) {
-  let state = {
+export function bufferToDeviceState(data: Buffer) {
+  const state = {
     LEDState: {
       isOn: data.readUInt8(2) === 0x23,
       RGB: {
@@ -26,5 +26,17 @@ export function calcChecksum(buffer: Uint8Array) {
     checksum += byte;
   }
 
-  return checksum & 0xff;
+  checksum = checksum & 0xff;
+  const finalCommand = Buffer.concat([buffer, Buffer.from([checksum])]);
+
+  return finalCommand;
+}
+
+export function bufferFromByteArray(byteArray: number[], useChecksum = true){
+  const buffer = Buffer.from(byteArray);
+  let payload = buffer;
+
+  if(useChecksum) payload = calcChecksum(buffer);
+
+  return payload
 }

@@ -2,7 +2,7 @@ import { MockMagicHomeDevice } from "./MockMagicHomeDevice";
 
 const EventEmitter = require('events')
 
-const TIMEOUT = 1000
+const TIMEOUT = 500
 const WILL_PASS = true;
 
 export class MockNet {
@@ -30,6 +30,7 @@ export class MockNet {
 
     public async write(data, dataType, callback?, testCommandOptions?) {
         const response = await this.mockMagicHomeDevice.mockSendDeviceCommand(data)
+        console.log('response: ', response)
         if (response) {
             this.emitData(response)
         }

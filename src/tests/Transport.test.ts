@@ -1,77 +1,120 @@
+import assert from 'assert';
 import { Transport } from '../Transport'
 
 const TEST_MODE = true
-const transport = new Transport('localhost');
+const HOST = '192.168.1.26'
 import * as types from '../types'
+
 const {
     DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
     COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND },
     DefaultAccessoryCommand
 } = types;
 
-const red = [0x31, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x0F];
-const green = [0x31, 0x00, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0x0F];
+const red = [0x31, 0xFF, 0x00, 0x00, 0x00, 0xF0, 0x0F];
+const green = [0x31, 0x00, 0xFF, 0x00, 0x00, 0xF0, 0x0F];
+const blue = [0x31, 0x00, 0x00, 0xFF, 0x00, 0xF0, 0x0F];
 
 const power = COMMAND_POWER_ON
 
-const TIMEOUT = 1000
+const TIMEOUT = 1000;
+let transport;
+// ; (async () => {
+// const testParams = {
+//     result: 'FAIL',
+//     timeToFail: '500'
+// }
 
-    ; (async () => {
-        const testParams = {
-            result: 'FAIL',
-            timeToFail: '500'
-        }
+beforeEach(done => {
+    // if (transport) transport.closeSocket();
+    transport = new Transport(HOST);
+    setTimeout(done, 500);
+});
 
+afterEach(done => {
+    setTimeout(done, 500);
+})
 
-        // // TEST 1
-        // let promise = new Promise((resolve, reject) => {
-        //     transport.writeCommand(red, resolve, reject, 2000);
-        // })
+async function asyncMethod(byteArray, timeout?) {
+    return await transport.send(byteArray, timeout);
+}
 
-        // promise.then((returnValue) => {
-        //     console.log('ret', returnValue)
-        // }).catch(err => {
-        //     console.log('FATAL err', err)
-        // })
+describe('Check input data types', () => {
 
+    it('Should accept format: byteArray: number[]', () => {
 
-        // // TEST 2
-        // promise = new Promise((resolve, reject) => {
-        //     const buffer = Buffer.from(COMMAND_QUERY_STATE)
-        //     transport.createEventListener(buffer, true, resolve, reject, TIMEOUT);
-        // })
-
-        // promise.then((returnValue) => {
-        //     console.log('ret', returnValue)
-        // }).catch(err => {
-        //     console.log('FATAL err', err)
-        // })
-
-
-        // TEST 3
-        let promise = new Promise((resolve, reject) => {
-            const buffer = Buffer.from(green)
-            transport._sendCommand(buffer, true, resolve, reject, TIMEOUT);
-        })
-
-        promise.then((returnValue) => {
-            console.log('ret', returnValue)
+        asyncMethod(COMMAND_QUERY_STATE, TIMEOUT).then((returnValue) => {
+            console.log('Test return value:', returnValue)
+            assert.strictEqual((returnValue !== null), true) //TODO create real assert
         }).catch(err => {
             console.log('FATAL err', err)
         })
 
 
-        // TEST 4
-        promise = new Promise((resolve, reject) => {
-            const buffer = Buffer.from(COMMAND_QUERY_STATE)
-            transport._sendCommand(buffer, true, resolve, reject, TIMEOUT);
+    })
+
+    it('Should handle unsupported format', () => {
+        asyncMethod("THIS IS A STRING WHICH IS UNSUPORTED", TIMEOUT).then((returnValue) => {
+            console.log('Test return value:', returnValue)
+        }).catch(err => {
+            assert(typeof err == typeof new Error())
+            console.log('Successfully caught unsuported format')
         })
 
-        promise.then((returnValue) => {
-            console.log('ret', returnValue)
+    })
+})
+
+
+describe('Query State Test', () => {
+
+    it('Should return current device state', () => {
+
+        asyncMethod(COMMAND_QUERY_STATE, TIMEOUT).then((returnValue) => {
+            console.log('return value: ', returnValue)
         }).catch(err => {
             console.log('FATAL err', err)
         })
 
 
-    })()
+    })
+
+});
+
+describe('Send Command Test', () => {
+
+    it('Should set the device color to red, green, blue', () => {
+        asyncMethod(red, 500).then((returnValue) => {
+            console.log(returnValue)
+        }).catch(err => {
+            console.log('FATAL err', err)
+        })
+
+        // await sleep(500)
+        asyncMethod(green, 500).then((returnValue) => {
+            console.log(returnValue)
+        }).catch(err => {
+            console.log('FATAL err', err)
+        })
+
+
+        // await sleep(500)
+
+        asyncMethod(blue, 500).then((returnValue) => {
+            console.log(returnValue)
+        }).catch(err => {
+            console.log('FATAL err', err)
+        })
+    })
+});
+
+
+async function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
+// })()
+
+// https://www.testim.io/blog/testing-promises-using-mocha/
+
