@@ -1,6 +1,9 @@
-export function bufferToDeviceState(data: Buffer) {
-  const state = {
-    LEDState: {
+import { IDeviceMetaData, IDeviceResponse, IDeviceState } from "../types";
+
+export function bufferToDeviceState(data: Buffer): IDeviceResponse {
+  const deviceResponse: IDeviceResponse = {
+    deviceState: {
+
       isOn: data.readUInt8(2) === 0x23,
       RGB: {
         red: data.readUInt8(6),
@@ -10,13 +13,17 @@ export function bufferToDeviceState(data: Buffer) {
       CCT: {
         warmWhite: data.readUInt8(9),
         coldWhite: data.readUInt8(11),
-      },
+      }
     },
-    controllerHardwareVersion: data.readUInt8(1),
-    controllerFirmwareVersion: data.readUInt8(10),
-    rawData: data,
+
+    deviceMetaData: {
+      controllerHardwareVersion: data.readUInt8(1),
+      controllerFirmwareVersion: data.readUInt8(10),
+      rawData: data,
+    }
   }
-  return state;
+  
+  return deviceResponse;
 }
 
 export function calcChecksum(buffer: Uint8Array) {
@@ -32,11 +39,39 @@ export function calcChecksum(buffer: Uint8Array) {
   return finalCommand;
 }
 
-export function bufferFromByteArray(byteArray: number[], useChecksum = true){
+export function bufferFromByteArray(byteArray: number[], useChecksum = true) {
   const buffer = Buffer.from(byteArray);
   let payload = buffer;
 
-  if(useChecksum) payload = calcChecksum(buffer);
+  if (useChecksum) payload = calcChecksum(buffer);
 
   return payload
+}
+
+export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
+  const keys1 = Object.keys(object1);
+  const keys2 = Object.keys(object2);
+
+  const omitSet = new Set(omitKeysArr ?? []);
+  if (keys1.length !== keys2.length && omitKeysArr?.length <= 0) {
+    return false;
+  }
+  for (const key of keys1) {
+
+    if (omitSet.has(key)) continue;
+    const val1 = object1[key];
+    const val2 = object2[key];
+    const areObjects = isObject(val1) && isObject(val2);
+    if (
+      areObjects && !deepEqual(val1, val2, omitKeysArr) ||
+      !areObjects && val1 !== val2
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isObject(object) {
+  return object != null && typeof object === 'object';
 }

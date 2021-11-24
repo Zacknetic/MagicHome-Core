@@ -42,6 +42,7 @@ export interface ICommandOptions {
     readonly commandType: string;
     readonly isEightByteProtocol?: boolean;
     retries: number;
+    maxRetries?: number;
 }
 
 export const CommandOptionDefaults: ICommandOptions = {
@@ -76,12 +77,23 @@ export interface IColorCCT {
     readonly coldWhite: number;
 }
 
+export interface IDeviceResponse {
+    deviceState: IDeviceState;
+    deviceMetaData: IDeviceMetaData;
+}
+
 export interface IDeviceState {
-    LEDState: ILEDState;
+    readonly isOn: boolean;
+    readonly RGB: IColorRGB;
+    readonly CCT: IColorCCT;
+}
+
+export interface IDeviceMetaData {
     controllerHardwareVersion?: number;
     controllerFirmwareVersion?: number;
     rawData?: Buffer;
 }
+
 
 export interface ICommandResponse {
     eventNumber: number;
@@ -91,10 +103,12 @@ export interface ICommandResponse {
 
 export interface ITransportResponse {
     eventNumber?: number;
-    command?: number[];
+    deviceCommand?: IDeviceCommand;
+    deviceState?: IDeviceState;
+    deviceMetaData?: IDeviceMetaData;
     response?: any;
-    msg?: string;
-    queueSize?: number
+    queueSize?: number;
+    retriesUsed?: number;
 }
 
 export interface IQueueOptions {

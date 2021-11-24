@@ -1,8 +1,7 @@
-import net from 'net';
+// import net from 'net';
 import Queue from 'promise-queue';
 import { bufferFromByteArray } from './utils/miscUtils';
-
-const COMMAND_QUERY_STATE: Uint8Array = Uint8Array.from([0x81, 0x8a, 0x8b]);
+import net from './tests/mock-net';
 
 const PORT = 5577;
 
@@ -13,7 +12,8 @@ function wait(emitter: net.Socket, eventName: string, timeout: number) {
 
     const waitTimeout: any = setTimeout(() => {
       complete = true; // mark the job as done
-      resolve(null);
+      console.log('timed out')
+      resolve(-1);
     }, timeout);
 
     // listen for the first event, then stop listening (once)
@@ -73,7 +73,7 @@ export class Transport {
     try {
       if (!this.socket) {
         this.socket = net.connect(options);
-        await wait(this.socket, 'connect', _timeout = 200);
+        await wait(this.socket, 'connect', _timeout);
       }
       result = await fn();
       return result;
@@ -86,10 +86,6 @@ export class Transport {
       } else {
         // this.logs.error('transport.ts error:', e);
       }
-    } finally {
-      if (this.queue.getQueueLength() === 0) {
-        this.disconnect();
-      }
     }
 
     return null;
@@ -98,10 +94,12 @@ export class Transport {
 
 
   send(byteArray: any, _timeout?) {
-    return this.queue.add(async () => (
-      this.connect(async () => {
-        await this.write(byteArray);
-        if (!_timeout) return null
+    return this.queue.add(() => (
+      this.connect(() => {
+        const writeReturn = this.write(byteArray, _timeout);
+        if (!_timeout) {
+          return writeReturn;
+        }
         return this.read(_timeout);
       })
         .then(response => {
@@ -110,24 +108,20 @@ export class Transport {
     ));
   }
 
-  async write(byteArray: any, _timeout = 200) {
-    let sent;
-
+  write(byteArray: any, _timeout = 200) {
     const payload = bufferFromByteArray(byteArray)
-    sent = this.socket.write(payload);
-
-
+    const sent = this.socket.write(payload);
     // wait for drain event which means all data has been sent
-    if (sent !== true) {
-      await wait(this.socket, 'drain', _timeout);
+    if (!sent) {
+      wait(this.socket, 'drain', _timeout);
     }
   }
 
-  async read(_timeout = 200) {
-    const data = await wait(this.socket, 'data', _timeout);
-
+  read(_timeout = 200) {
+    const data = wait(this.socket, 'data', _timeout);
     return data;
   }
+
   disconnect() {
     this.socket.end();
     this.socket.destroy();
