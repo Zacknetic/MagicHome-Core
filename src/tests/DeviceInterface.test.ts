@@ -10,7 +10,7 @@ const {
 function asyncMethod(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
     return deviceInterface.sendCommand(deviceCommand, commandOptions)
 }
-
+0
 let deviceInterface;
 
 beforeEach(done => {
@@ -23,8 +23,8 @@ beforeEach(done => {
 // })
 
 describe('Basic Commands Without Waiting For Reply', () => {
-    const deviceCommand: IDeviceCommand = {isOn: true, RGB: {red: 0, green: 255, blue: 255}, CCT: {warmWhite: 0, coldWhite: 0}, colorMask: 0xFF}
-    const commandOptions: ICommandOptions = {retries: 5, commandType: COLOR_COMMAND}
+    const deviceCommand: IDeviceCommand = {isOn: true, RGB: {red: 2, green: 10, blue: 125}, CCT: {warmWhite: 0, coldWhite: 0}, colorMask: 0xF0}
+    const commandOptions: ICommandOptions = {retries: 20, commandType: COLOR_COMMAND, timeoutMS: 20, isEightByteProtocol: true}
     // it('Should add a single color command to the queue and return success code and null deviceState', async () => {
     //     asyncMethod(deviceCommand, commandOptions).then((returnValue) => {
     //         console.log('return value: ', returnValue)

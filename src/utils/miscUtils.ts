@@ -1,6 +1,7 @@
 import { IDeviceMetaData, IDeviceResponse, IDeviceState } from "../types";
 
 export function bufferToDeviceState(data: Buffer): IDeviceResponse {
+if(!Buffer.isBuffer(data) || data.length < 14) return null;
   const deviceResponse: IDeviceResponse = {
     deviceState: {
 

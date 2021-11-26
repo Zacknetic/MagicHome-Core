@@ -9,7 +9,7 @@ import * as types from './types';
 import { bufferToDeviceState, deepEqual } from './utils/miscUtils';
 
 
-const RETRY_QUERY_MS = 2000;
+const RETRY_QUERY_MS = 1000;
 const RESET_LATEST_POWER_COMMAND_MS = 2000;
 
 
@@ -53,7 +53,7 @@ export class DeviceInterface {
         const commandOptions: ICommandOptions = { commandType: QUERY_COMMAND, timeoutMS, retries: 0 }
 
         const byteArray = this.commandToByteArray(null, commandOptions);
-        const transportResponse: ITransportResponse = await this.transport.send(byteArray, commandOptions)
+        const transportResponse: ITransportResponse = await this.transport.send(byteArray, commandOptions.timeoutMS);
         const stateBuffer = transportResponse.response;
         const deviceResponse: IDeviceResponse = bufferToDeviceState(stateBuffer);
         transportResponse.response = deviceResponse;
@@ -71,6 +71,7 @@ export class DeviceInterface {
 
                 queryResponse = await this.queryState(RETRY_QUERY_MS);
                 const deviceResponse: IDeviceResponse = queryResponse.response;
+                if(!deviceResponse) return null;
                 const {deviceState, deviceMetaData} = deviceResponse;
                 const isValidState = this.isValidState(deviceCommand, deviceResponse, commandOptions)
                 if (!isValidState) {
@@ -84,10 +85,10 @@ export class DeviceInterface {
         } catch (error) {
             console.log("error", error)
         } finally {
+            if(this.queueSize === 0){ 
+                console.log('disconnecting')
+                this.transport.disconnect()
 
-            if (commandOptions?.retries <= 0) {
-                this.transport.disconnect();
-                return queryResponse
             }
         }
     }

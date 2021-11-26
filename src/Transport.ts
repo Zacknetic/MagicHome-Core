@@ -1,7 +1,7 @@
-// import net from 'net';
+import net from 'net';
 import Queue from 'promise-queue';
 import { bufferFromByteArray } from './utils/miscUtils';
-import net from './tests/mock-net';
+// import net from './tests/mock-net';
 
 const PORT = 5577;
 
@@ -9,10 +9,8 @@ function wait(emitter: net.Socket, eventName: string, timeout: number) {
 
   return new Promise((resolve, reject) => {
     let complete = false;
-
     const waitTimeout: any = setTimeout(() => {
       complete = true; // mark the job as done
-      console.log('timed out')
       resolve(-1);
     }, timeout);
 
@@ -27,7 +25,6 @@ function wait(emitter: net.Socket, eventName: string, timeout: number) {
 
     emitter.once('close', () => {
       clearTimeout(waitTimeout); // stop the timeout from executing
-
       // if the socket closed before we resolved the promise, reject the promise
       if (!complete) {
         complete = true;
@@ -38,7 +35,6 @@ function wait(emitter: net.Socket, eventName: string, timeout: number) {
     // handle the first error and reject the promise
     emitter.on('error', (e) => {
       clearTimeout(waitTimeout); // stop the timeout from executing
-
       if (!complete) {
         complete = true;
         reject(e);
@@ -73,7 +69,8 @@ export class Transport {
     try {
       if (!this.socket) {
         this.socket = net.connect(options);
-        await wait(this.socket, 'connect', _timeout);
+        this.socket.setMaxListeners(100)
+        await wait(this.socket, 'connect', 2000);
       }
       result = await fn();
       return result;
@@ -81,6 +78,7 @@ export class Transport {
       this.disconnect();
       const { code, address, port } = e;
       if (code) {
+        console.log(code)
         // No need to show error here, shown upstream
         // this.log.debug(`Unable to connect to ${address} ${port} (code: ${code})`);
       } else {
@@ -93,11 +91,11 @@ export class Transport {
 
 
 
-  send(byteArray: any, _timeout?) {
+  send(byteArray: any, _timeout) {
     return this.queue.add(() => (
       this.connect(() => {
         const writeReturn = this.write(byteArray, _timeout);
-        if (!_timeout) {
+        if (_timeout <= 0) {
           return writeReturn;
         }
         return this.read(_timeout);
@@ -105,6 +103,14 @@ export class Transport {
         .then(response => {
           return { response, queueSize: this.queue.getQueueLength() }
         })
+        // .finally(() => {
+
+        //   console.log('finally')
+        //   if (this.queue.getQueueLength() <= 0) {
+        //     console.log('disconnecting')
+        //     this.disconnect();
+        //   }
+        // })
     ));
   }
 
@@ -125,7 +131,6 @@ export class Transport {
   disconnect() {
     this.socket.end();
     this.socket.destroy();
-    this.socket = null;
   }
 
 }

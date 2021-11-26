@@ -24,14 +24,16 @@
 // //     result: 'FAIL',
 // //     timeToFail: '500'
 // // }
+// // transport = new Transport(HOST);
 
 // beforeEach(done => {
-//     // if (transport) transport.closeSocket();
+//     if (transport) transport.disconnect();
 //     transport = new Transport(HOST);
 //     setTimeout(done, 500);
 // });
 
 // afterEach(done => {
+//     // transport.disconnect();
 //     setTimeout(done, 500);
 // })
 
