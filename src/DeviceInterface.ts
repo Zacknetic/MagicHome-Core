@@ -9,8 +9,9 @@ import * as types from './types';
 import { bufferToDeviceState, deepEqual } from './utils/miscUtils';
 
 
-
+const RETRY_QUERY_MS = 2000;
 const RESET_LATEST_POWER_COMMAND_MS = 2000;
+
 
 const {
     DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
@@ -31,10 +32,10 @@ export class DeviceInterface {
     }
 
     public async sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
-        if(!commandOptions?.maxRetries) commandOptions.maxRetries = commandOptions?.retries ?? 0
+        if(!commandOptions?.maxRetries) commandOptions.maxRetries = commandOptions?.retries ?? 0;
         const byteArray = this.commandToByteArray(deviceCommand, commandOptions);
         const transportResponse: ITransportResponse = await this.transport.send(byteArray, commandOptions.timeoutMS ?? 200)
-        const state = await this.handleReponse(transportResponse, commandOptions, deviceCommand)
+        const state = await this.handleReponse(transportResponse, commandOptions, deviceCommand);
         if(!state){
             return transportResponse
         } else {
@@ -42,23 +43,42 @@ export class DeviceInterface {
         }
     }
 
+    /**
+     * Query the device for state
+     * @param timeoutMS (default 500ms) duration to wait for device state before returning null
+     * @returns ITransportResponse
+     */
+
+    public async queryState(timeoutMS): Promise<ITransportResponse> {
+        const commandOptions: ICommandOptions = { commandType: QUERY_COMMAND, timeoutMS, retries: 0 }
+
+        const byteArray = this.commandToByteArray(null, commandOptions);
+        const transportResponse: ITransportResponse = await this.transport.send(byteArray, commandOptions)
+        const stateBuffer = transportResponse.response;
+        const deviceResponse: IDeviceResponse = bufferToDeviceState(stateBuffer);
+        transportResponse.response = deviceResponse;
+
+        return transportResponse;
+    }
+
+    
     protected async handleReponse(transportResponse: ITransportResponse, commandOptions: ICommandOptions, deviceCommand: IDeviceCommand) {
 
         this.queueSize = transportResponse.queueSize ?? this.queueSize;
         let queryResponse: ITransportResponse;
         try {
-            if (this.queueSize === 0 && commandOptions?.retries > 0) {
-                queryResponse = await this.queryState(1000);
-                const stateBuffer = queryResponse.response;
-                const deviceResponse: IDeviceResponse = bufferToDeviceState(stateBuffer);
+            if (this.queueSize === 0 && commandOptions.maxRetries > 0) {
+
+                queryResponse = await this.queryState(RETRY_QUERY_MS);
+                const deviceResponse: IDeviceResponse = queryResponse.response;
                 const {deviceState, deviceMetaData} = deviceResponse;
                 const isValidState = this.isValidState(deviceCommand, deviceResponse, commandOptions)
                 if (!isValidState) {
                     commandOptions.retries--;
                     return this.sendCommand(deviceCommand, commandOptions);
                 } else {
-                    const transportResponse: ITransportResponse = {deviceState, deviceCommand, retriesUsed: commandOptions.maxRetries - commandOptions.retries}
-                    return transportResponse
+                    const transportResponse: ITransportResponse = {deviceMetaData, deviceState, deviceCommand, retriesUsed: commandOptions.maxRetries - commandOptions.retries}
+                    return transportResponse;
                 }
             }
         } catch (error) {
@@ -77,19 +97,6 @@ export class DeviceInterface {
         return isEqual;
     }
 
-    /**
-     * Query the device for state
-     * @param timeoutMS (default 500ms) duration to wait for device state before returning null
-     * @returns ITransportResponse
-     */
-
-    public async queryState(timeoutMS): Promise<ITransportResponse> {
-        const commandOptions: ICommandOptions = { commandType: QUERY_COMMAND, timeoutMS, retries: 20 }
-
-        const byteArray = this.commandToByteArray(null, commandOptions);
-        const transportResponse: ITransportResponse = await this.transport.send(byteArray, 1000)
-        return transportResponse;
-    }
 
     private commandToByteArray(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
         let commandByteArray;
