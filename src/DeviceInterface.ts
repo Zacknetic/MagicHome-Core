@@ -8,10 +8,9 @@ import { Transport } from './Transport'
 import * as types from './types';
 import { bufferToDeviceState, deepEqual } from './utils/miscUtils';
 
-
+const RETRY_WAIT_MS = 2000;
 const RETRY_QUERY_MS = 1000;
 const RESET_LATEST_POWER_COMMAND_MS = 2000;
-
 
 const {
     DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
@@ -24,7 +23,7 @@ export class DeviceInterface {
     protected latestPowerCommand = null;
 
     protected testPowerStateTimeout: NodeJS.Timeout;
-    protected finalCommandTimeout: NodeJS.Timeout;
+    protected retryCommandTimeout: NodeJS.Timeout = null;
 
     protected transport;
     constructor(ipAddress) {
@@ -32,11 +31,11 @@ export class DeviceInterface {
     }
 
     public async sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
-        if(!commandOptions?.maxRetries) commandOptions.maxRetries = commandOptions?.retries ?? 0;
         const byteArray = this.commandToByteArray(deviceCommand, commandOptions);
-        const transportResponse: ITransportResponse = await this.transport.send(byteArray, commandOptions.timeoutMS ?? 200)
+        const transportResponse: ITransportResponse = await this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false)
         const state = await this.handleReponse(transportResponse, commandOptions, deviceCommand);
-        if(!state){
+        console.log(state)
+        if (!state) {
             return transportResponse
         } else {
             return state;
@@ -51,9 +50,8 @@ export class DeviceInterface {
 
     public async queryState(timeoutMS): Promise<ITransportResponse> {
         const commandOptions: ICommandOptions = { commandType: QUERY_COMMAND, timeoutMS, retries: 0 }
-
         const byteArray = this.commandToByteArray(null, commandOptions);
-        const transportResponse: ITransportResponse = await this.transport.send(byteArray, commandOptions.timeoutMS);
+        const transportResponse: ITransportResponse = await this.transport.send(byteArray, timeoutMS);
         const stateBuffer = transportResponse.response;
         const deviceResponse: IDeviceResponse = bufferToDeviceState(stateBuffer);
         transportResponse.response = deviceResponse;
@@ -61,35 +59,38 @@ export class DeviceInterface {
         return transportResponse;
     }
 
-    
+
     protected async handleReponse(transportResponse: ITransportResponse, commandOptions: ICommandOptions, deviceCommand: IDeviceCommand) {
 
         this.queueSize = transportResponse.queueSize ?? this.queueSize;
         let queryResponse: ITransportResponse;
-        try {
-            if (this.queueSize === 0 && commandOptions.maxRetries > 0) {
 
-                queryResponse = await this.queryState(RETRY_QUERY_MS);
-                const deviceResponse: IDeviceResponse = queryResponse.response;
-                if(!deviceResponse) return null;
-                const {deviceState, deviceMetaData} = deviceResponse;
-                const isValidState = this.isValidState(deviceCommand, deviceResponse, commandOptions)
-                if (!isValidState) {
-                    commandOptions.retries--;
-                    return this.sendCommand(deviceCommand, commandOptions);
-                } else {
-                    const transportResponse: ITransportResponse = {deviceMetaData, deviceState, deviceCommand, retriesUsed: commandOptions.maxRetries - commandOptions.retries}
-                    return transportResponse;
-                }
-            }
-        } catch (error) {
-            console.log("error", error)
-        } finally {
-            if(this.queueSize === 0){ 
-                console.log('disconnecting')
-                this.transport.disconnect()
+        if (this.queueSize === 0 && commandOptions.retries > 0) {
+            this.clearRetryCommandTimeout();
 
-            }
+            return new Promise((resolve) => {
+                this.retryCommandTimeout = setTimeout(async () => {
+                    queryResponse = await this.queryState(RETRY_QUERY_MS);
+                    const deviceResponse: IDeviceResponse = queryResponse.response;
+                    let deviceState, deviceMetaData, isValidState;
+                    if (deviceResponse) {
+                        deviceState = deviceResponse.deviceState;
+                        deviceMetaData = deviceResponse.deviceMetaData;
+                        isValidState = this.isValidState(deviceCommand, deviceResponse, commandOptions)
+                    }
+                    if (!deviceResponse || (!isValidState ?? null)) {
+                        commandOptions.retries--;
+                        resolve (this.sendCommand(deviceCommand, commandOptions));
+                    } else {
+                        const transportResponse: ITransportResponse = { deviceMetaData, deviceState, deviceCommand, retriesUsed: commandOptions.retries }
+                        this.transport.disconnect()
+                        resolve( transportResponse);
+                    }
+                }, RETRY_WAIT_MS);
+            });
+
+        } else {
+            return null;
         }
     }
 
@@ -143,6 +144,11 @@ export class DeviceInterface {
         }
 
         return commandByteArray;
+    }
+
+    clearRetryCommandTimeout() {
+        if (this.retryCommandTimeout) clearTimeout(this.retryCommandTimeout);
+        this.retryCommandTimeout = null;
     }
 
     testLatestPowerCommand(isOn: boolean) {

@@ -15,7 +15,7 @@
 // const green = [0x31, 0x00, 0xFF, 0x00, 0x00, 0xF0, 0x0F];
 // const blue = [0x31, 0x00, 0x00, 0xFF, 0x00, 0xF0, 0x0F];
 
-// const power = COMMAND_POWER_ON
+// const power = COMMAND_POWER_ON;
 
 // const TIMEOUT = 1000;
 // let transport;
@@ -33,7 +33,7 @@
 // });
 
 // afterEach(done => {
-//     // transport.disconnect();
+//     transport.disconnect();
 //     setTimeout(done, 500);
 // })
 
@@ -41,57 +41,57 @@
 //     return await transport.send(byteArray, timeout);
 // }
 
-// describe('Check input data types', () => {
+// // describe('Check input data types', () => {
 
-//     it('Should accept format: byteArray: number[]', () => {
+// //     it('Should accept format: byteArray: number[]', () => {
 
-//         asyncMethod(COMMAND_QUERY_STATE, TIMEOUT).then((returnValue) => {
-//             console.log('Test return value:', returnValue)
-//             assert.strictEqual((returnValue !== null), true) //TODO create real assert
-//         }).catch(err => {
-//             console.log('FATAL err', err)
-//         })
-
-
-//     })
-
-//     it('Should handle unsupported format', () => {
-//         asyncMethod("THIS IS A STRING WHICH IS UNSUPORTED", TIMEOUT).then((returnValue) => {
-//             console.log('Test return value:', returnValue)
-//         }).catch(err => {
-//             assert(typeof err == typeof new Error())
-//             console.log('Successfully caught unsuported format')
-//         })
-
-//     })
-// })
+// //         asyncMethod(COMMAND_QUERY_STATE, TIMEOUT).then((returnValue) => {
+// //             console.log('Test return value:', returnValue)
+// //             assert.strictEqual((returnValue !== null), true) //TODO create real assert
+// //         }).catch(err => {
+// //             console.log('FATAL err', err)
+// //         })
 
 
-// describe('Query State Test', () => {
+// //     })
 
-//     it('Should return current device state', () => {
+// //     it('Should handle unsupported format', () => {
+// //         asyncMethod("THIS IS A STRING WHICH IS UNSUPORTED", TIMEOUT).then((returnValue) => {
+// //             console.log('Test return value:', returnValue)
+// //         }).catch(err => {
+// //             assert(typeof err == typeof new Error())
+// //             console.log('Successfully caught unsuported format')
+// //         })
 
-//         asyncMethod(COMMAND_QUERY_STATE, TIMEOUT).then((returnValue) => {
-//             console.log('return value: ', returnValue)
-//         }).catch(err => {
-//             console.log('FATAL err', err)
-//         })
+// //     })
+// // })
 
 
-//     })
+// // describe('Query State Test', () => {
 
-// });
+// //     it('Should return current device state', () => {
 
-// describe('Send Command Test', () => {
+// //         asyncMethod(COMMAND_QUERY_STATE, TIMEOUT).then((returnValue) => {
+// //             console.log('return value: ', returnValue)
+// //         }).catch(err => {
+// //             console.log('FATAL err', err)
+// //         })
 
-//     it('Should set the device color to red, green, blue', () => {
+
+// //     })
+
+// // });
+
+// describe('Send Command Test', async () => {
+
+//     await it('Should set the device color to red, green, blue', async () => {
 //         asyncMethod(red, 500).then((returnValue) => {
 //             console.log(returnValue)
 //         }).catch(err => {
 //             console.log('FATAL err', err)
 //         })
 
-//         // await sleep(500)
+//         await sleep(1000)
 //         asyncMethod(green, 500).then((returnValue) => {
 //             console.log(returnValue)
 //         }).catch(err => {
@@ -99,7 +99,7 @@
 //         })
 
 
-//         // await sleep(500)
+//         await sleep(1000)
 
 //         asyncMethod(blue, 500).then((returnValue) => {
 //             console.log(returnValue)
@@ -115,8 +115,6 @@
 //         setTimeout(resolve, ms);
 //     });
 // }
-
-// // })()
 
 // // https://www.testim.io/blog/testing-promises-using-mocha/
 

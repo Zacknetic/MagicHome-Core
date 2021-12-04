@@ -10,52 +10,48 @@ const {
 function asyncMethod(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
     return deviceInterface.sendCommand(deviceCommand, commandOptions)
 }
-0
-let deviceInterface;
 
-beforeEach(done => {
-    deviceInterface = new DeviceInterface('192.168.1.26');
-    setTimeout(done, 500)
-});
+let deviceInterface;
+deviceInterface = new DeviceInterface('192.168.1.26');
+
+
 
 // afterEach(done => {
 //     setTimeout(done, 500)
 // })
+// await sleep(500);
+
 
 describe('Basic Commands Without Waiting For Reply', () => {
-    const deviceCommand: IDeviceCommand = {isOn: true, RGB: {red: 2, green: 10, blue: 125}, CCT: {warmWhite: 0, coldWhite: 0}, colorMask: 0xF0}
-    const commandOptions: ICommandOptions = {retries: 20, commandType: COLOR_COMMAND, timeoutMS: 20, isEightByteProtocol: true}
-    // it('Should add a single color command to the queue and return success code and null deviceState', async () => {
-    //     asyncMethod(deviceCommand, commandOptions).then((returnValue) => {
-    //         console.log('return value: ', returnValue)
-    //     }).catch(err => {
-    //         console.log('FATAL err', err)
-    //     })
-    // })
+    beforeEach(done => {
+        setTimeout(done, 1000);
+    });
 
-    it('Should add five color commands to the queue and return success code for each null deviceState', async () => {
+
+    it('Should set light state to red', () => {
+        let deviceCommand = { isOn: true, RGB: { red: 255, green: 0, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xF0 };
+        const commandOptions: ICommandOptions = { retries: 20, commandType: COLOR_COMMAND, timeoutMS: 20, isEightByteProtocol: true };
+
+        // await sleep(500);
         asyncMethod(deviceCommand, commandOptions).then((returnValue) => {
-            console.log('return value: ', returnValue)
+            console.log('return value: ', returnValue);
         }).catch(err => {
-            console.log('FATAL err', err)
+            console.log('FATAL err', err);
         })
-        asyncMethod(deviceCommand, commandOptions).then((returnValue) => {
-            console.log('return value: ', returnValue)
-        }).catch(err => {
-            console.log('FATAL err', err)
-        })
-        asyncMethod(deviceCommand, commandOptions).then((returnValue) => {
-            console.log('return value: ', returnValue)
-        }).catch(err => {
-            console.log('FATAL err', err)
-        })
-        asyncMethod(deviceCommand, commandOptions).then((returnValue) => {
-            console.log('return value: ', returnValue)
-        }).catch(err => {
-            console.log('FATAL err', err)
-        })
+
     })
 
+    it('Should set the light state to green', () => {
+        let deviceCommand = { isOn: true, RGB: { red: 0, green: 255, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xF0 };
+        const commandOptions: ICommandOptions = { retries: 20, commandType: COLOR_COMMAND, timeoutMS: 20, isEightByteProtocol: true };
+
+        asyncMethod(deviceCommand, commandOptions).then((returnValue) => {
+            console.log('return value: ', returnValue)
+        }).catch(err => {
+            console.log('FATAL err', err)
+        })
+
+    })
     // it('Should add five color commands two queryState commands to the queue \nreturning success code for color commands and state for query state commands', async () => {
     //     asyncMethod(COMMAND_QUERY_STATE, TIMEOUT).then((returnValue) => {
     //         console.log('return value: ', returnValue)
@@ -111,6 +107,12 @@ describe('Basic Commands Without Waiting For Reply', () => {
 //         asyncMethod(deviceCommand, commandOptions)
 //     })
 
-  
+
 
 // });
+
+async function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}

@@ -4,7 +4,7 @@ import { bufferFromByteArray } from './utils/miscUtils';
 // import net from './tests/mock-net';
 
 const PORT = 5577;
-
+const SOCKET_TIMEOUT = 2000;
 function wait(emitter: net.Socket, eventName: string, timeout: number) {
 
   return new Promise((resolve, reject) => {
@@ -40,6 +40,7 @@ function wait(emitter: net.Socket, eventName: string, timeout: number) {
         reject(e);
       }
     });
+    
 
   });
 }
@@ -62,61 +63,39 @@ export class Transport {
     const options = {
       host: this.host,
       port: PORT,
-      timeout: _timeout,
+      timeout: SOCKET_TIMEOUT,
     };
 
     let result;
-    try {
+    // try {
       if (!this.socket) {
         this.socket = net.connect(options);
         this.socket.setMaxListeners(100)
-        await wait(this.socket, 'connect', 2000);
+        await wait(this.socket, 'connect', SOCKET_TIMEOUT);
       }
       result = await fn();
       return result;
-    } catch (e) {
-      this.disconnect();
-      const { code, address, port } = e;
-      if (code) {
-        console.log(code)
-        // No need to show error here, shown upstream
-        // this.log.debug(`Unable to connect to ${address} ${port} (code: ${code})`);
-      } else {
-        // this.logs.error('transport.ts error:', e);
-      }
-    }
-
-    return null;
   }
 
-
-
-  send(byteArray: any, _timeout) {
+  send(byteArray: any, timeoutMS) {
+    console.log(timeoutMS)
     return this.queue.add(() => (
       this.connect(() => {
-        const writeReturn = this.write(byteArray, _timeout);
-        if (_timeout <= 0) {
+        const writeReturn = this.write(byteArray, timeoutMS);
+        if (timeoutMS <= 0) {
           return writeReturn;
         }
-        return this.read(_timeout);
+        return this.read(timeoutMS);
       })
         .then(response => {
           return { response, queueSize: this.queue.getQueueLength() }
         })
-        // .finally(() => {
-
-        //   console.log('finally')
-        //   if (this.queue.getQueueLength() <= 0) {
-        //     console.log('disconnecting')
-        //     this.disconnect();
-        //   }
-        // })
     ));
   }
 
   write(byteArray: any, _timeout = 200) {
     const payload = bufferFromByteArray(byteArray)
-    const sent = this.socket.write(payload);
+    const sent = this.socket.write(payload,'binary', ()=>{return});
     // wait for drain event which means all data has been sent
     if (!sent) {
       wait(this.socket, 'drain', _timeout);
