@@ -82,15 +82,16 @@ export class Transport {
     console.log(timeoutMS)
     return this.queue.add(() => (
       this.connect(() => {
-        const writeReturn = this.write(byteArray, timeoutMS);
-        let response;
-        if (!expectResponse) {
-          response = writeReturn;
-        } else {
-          response = this.read(timeoutMS);
-        }
+        this.write(byteArray, timeoutMS);
+        // let response;
+        // // if (!expectResponse) {
+        // //   response = writeReturn;
+        // // } else {
+          const response = this.read(timeoutMS);
+          console.log('response',response)
+        // // }
 
-        return response;
+        // return response;
       })
         .then(response => {
           return { response, queueSize: this.queue.getQueueLength() }
@@ -101,14 +102,13 @@ export class Transport {
   write(byteArray: number[], timeoutMS) {
     return new Promise((resolve, reject) => {
       const payload = bufferFromByteArray(byteArray)
-      if (timeoutMS > 0) {
-        this.socket.write(payload, 'binary', () => {
-          resolve(1)
-        });
-      } else {
-        this.socket.write(payload, 'binary');
-        resolve(3)
-      }
+      // if (timeoutMS > 0) {
+        const ret = this.socket.write('HF-A11ASSISTHREAD');
+        console.log(ret)
+      // } else {
+      //   this.socket.write(payload, 'binary');
+      //   resolve(3)
+      // }
 
 
       // // wait for drain event which means all data has been sent
@@ -124,8 +124,10 @@ export class Transport {
     return 2;
   }
 
-  read(_timeout = 200) {
+  async read(_timeout = 200) {
+    console.log('read')
     const data = wait(this.socket, 'data', _timeout);
+    console.log('data',data)
     return data;
   }
 

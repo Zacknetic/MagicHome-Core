@@ -1,8 +1,7 @@
-// import assert from 'assert';
-// import { Transport } from '../Transport'
+// import { Transport } from '../Transport3'
 
 // const TEST_MODE = true
-// const HOST = '192.168.1.26'
+// const HOST = '192.168.1.44'
 // import * as types from '../types'
 
 // const {
@@ -14,6 +13,10 @@
 // const red = [0x31, 0xFF, 0x00, 0x00, 0x00, 0xF0, 0x0F];
 // const green = [0x31, 0x00, 0xFF, 0x00, 0x00, 0xF0, 0x0F];
 // const blue = [0x31, 0x00, 0x00, 0xFF, 0x00, 0xF0, 0x0F];
+// // const red = [0x31, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x0F];
+// // const green = [0x31, 0x00, 0xFF, 0x00, 0x00, 0x00, 0xF0, 0x0F];
+// // const blue = [0x31, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xF0, 0x0F];
+// // const warmWhite = [0x31, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xF0, 0x0F];
 
 // const power = COMMAND_POWER_ON;
 
@@ -26,19 +29,9 @@
 // // }
 // // transport = new Transport(HOST);
 
-// beforeEach(done => {
-//     if (transport) transport.disconnect();
-//     transport = new Transport(HOST);
-//     setTimeout(done, 500);
-// });
 
-// afterEach(done => {
-//     transport.disconnect();
-//     setTimeout(done, 500);
-// })
-
-// async function asyncMethod(byteArray, timeout?) {
-//     return await transport.send(byteArray, timeout);
+// function asyncMethod(byteArray, timeout?) {
+//     return transport.send(byteArray, timeout);
 // }
 
 // // describe('Check input data types', () => {
@@ -82,39 +75,56 @@
 
 // // });
 
-// describe('Send Command Test', async () => {
+// before(done => {
+//     setTimeout(done, 1000);
+//     transport = new Transport(HOST);
 
-//     await it('Should set the device color to red, green, blue', async () => {
-//         asyncMethod(red, 500).then((returnValue) => {
+// });
+// describe('Send Command Test', () => {
+
+
+//     // afterEach(async function (done) {
+//     //     if (transport) transport.disconnect();
+//     //     setTimeout(done, TIMEOUT);
+//     // });
+
+//     it('Should set the device color to red, green, blue', function () {
+//         // asyncMethod(green, 200).then((returnValue) => {
+//         //     console.log(returnValue)
+//         //     // setImmediate(done)
+//         // }).catch(err => {
+//         //     console.log('FATAL err', err)
+//         // })
+
+
+
+//         asyncMethod(green, 0).then((returnValue) => {
 //             console.log(returnValue)
+//             // setImmediate(done)
 //         }).catch(err => {
 //             console.log('FATAL err', err)
 //         })
 
-//         await sleep(1000)
-//         asyncMethod(green, 500).then((returnValue) => {
-//             console.log(returnValue)
-//         }).catch(err => {
-//             console.log('FATAL err', err)
-//         })
 
 
-//         await sleep(1000)
 
-//         asyncMethod(blue, 500).then((returnValue) => {
-//             console.log(returnValue)
-//         }).catch(err => {
-//             console.log('FATAL err', err)
-//         })
+//         // asyncMethod(blue, 200).then((returnValue) => {
+//         //     console.log(returnValue)
+//         //     // setImmediate(done)
+//         //     // setImmediate(done)
+
+//         // }).catch(err => {
+//         //     console.log('FATAL err', err)
+//         // })
 //     })
 // });
 
 
-// async function sleep(ms) {
-//     return new Promise((resolve) => {
-//         setTimeout(resolve, ms);
-//     });
-// }
+// // async function sleep(ms) {
+// //     return new Promise((resolve) => {
+// //         setTimeout(resolve, ms);
+// //     });
+// // }
 
 // // https://www.testim.io/blog/testing-promises-using-mocha/
 

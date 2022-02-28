@@ -115,7 +115,7 @@ export class Transport {
     async write(buffer: any, useChecksum = true, _timeout = 200) {
 
         const payload = bufferFromByteArray(buffer);
-        const sent = this.socket.write(payload);
+        const sent = await this.socket.write(payload);
 
         console.log(sent) //TODO REMOVE
 

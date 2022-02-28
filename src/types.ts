@@ -12,15 +12,18 @@ export const EventNumber = new Map([
     [-3, 'incorrect device state, no retries requested'],
     [-2, 'socket closed before resolving'],
     [-1, 'unknown failure'],
-    [0, 'unneccisary query command, query already queued'],
+    [0, 'unnecessary query command, query already queued'],
     [1, 'device responded with valid state'],
     [2, 'read state timeout not requested']
 ]);
 
 export interface IDeviceDiscoveredProps {
-    ipAddress: string;
-    uniqueId: string;
-    modelNumber: string;
+    ipAddress?: string;
+    uniqueId?: string;
+    modelNumber?: string;
+    hardwareVersion?: number;
+    firmwareVersion?: number;
+    latestUpdate?: string;
 }
 
 export const COMMAND_TYPE = {
@@ -29,19 +32,27 @@ export const COMMAND_TYPE = {
     ANIMATION_FRAME: 'animationFrame',
     QUERY_COMMAND: 'queryCommand',
 }
+
+export const CommandDefaults: ICommandOptions = {
+    timeoutMS: 50,
+    bufferMS: 20,
+    commandType: COMMAND_TYPE.COLOR_COMMAND,
+    remainingRetries: 5,
+}
 /**
  * @field timeoutMS?: number
  * @field bufferMS?: number
  * @field commandType?: string
  * @field isEightByteProtocol?: boolean
  * @field maxRetries: number
+ * @field remainingRetries: number
  */
 export interface ICommandOptions {
     readonly timeoutMS?: number;
     readonly bufferMS?: number;
     readonly commandType: string;
     readonly isEightByteProtocol?: boolean;
-    retries: number;
+    remainingRetries: number;
     maxRetries?: number;
 }
 
@@ -50,14 +61,22 @@ export const CommandOptionDefaults: ICommandOptions = {
     bufferMS: 20,
     commandType: 'powerCommand',
     isEightByteProtocol: false,
-    retries: 0,
+    remainingRetries: 0,
+    maxRetries: 0,
 }
 
 export interface IDeviceCommand {
-    readonly isOn: boolean;
+    isOn: boolean;
     readonly RGB: IColorRGB;
     readonly CCT: IColorCCT;
-    readonly colorMask: number;
+    colorMask: number;
+}
+
+export interface IIncompleteCommand {
+    isOn?: boolean;
+    readonly RGB?: IColorRGB;
+    readonly CCT?: IColorCCT;
+    colorMask?: number;
 }
 
 export interface ILEDState {
@@ -96,38 +115,26 @@ export interface IDeviceMetaData {
 
 
 export interface ICommandResponse {
-    eventNumber: number;
+    responseCode: number;
     readonly deviceCommand: IDeviceCommand | null;
     readonly deviceState: IDeviceState | null;
 }
 
 export interface ITransportResponse {
-    eventNumber?: number;
+    responseCode: number;
     deviceCommand?: IDeviceCommand;
     deviceState?: IDeviceState;
     deviceMetaData?: IDeviceMetaData;
-    response?: any;
+    msg?: any;
     queueSize?: number;
-    retriesUsed?: number;
+    remainingRetries?: number;
+    maxRetries?: number;
 }
 
 export interface IQueueOptions {
     timeout?: number;
     autoStart?: boolean;
     interval?: number
-}
-
-/**
- * @field timeoutMS?: number
- * @field intervalMS?: number
- * @field remainingRetries?: number
- * @field maxRetries: number
- */
-export interface IPromiseOptions {
-    readonly timeoutMS?: number;
-    readonly intervalMS?: number
-    remainingRetries?: number;
-    readonly maxRetries: number;
 }
 
 /*******************************MOCK SETTINGS****************** */
@@ -164,3 +171,23 @@ export const DefaultAccessoryCommand = {
         coldWhite: 0,
     }
 };
+
+export const ColorMasks = {
+    white: 0x0F,
+    color: 0xF0,
+    both: 0xFF,
+}
+
+export const DefaultCommand: IDeviceCommand = {
+    isOn: false,
+    RGB: {
+        red: 0,
+        green: 0,
+        blue: 0,
+    },
+    CCT: {
+        warmWhite: 0,
+        coldWhite: 0,
+    },
+    colorMask: ColorMasks.color,
+}

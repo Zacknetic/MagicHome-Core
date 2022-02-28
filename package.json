@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test:watch": "ts-mocha --watch-extensions ts --watch --watch-files src 'src/tests/*.test.ts'",
+    "test:watch": "ts-mocha --watch-extensions ts --watch --watch-files src 'src/specs/*.spec.ts'",
     "watch": "npm run build && npm link && nodemon || exit 1"
   },
   "repository": {
