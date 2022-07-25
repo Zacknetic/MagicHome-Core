@@ -16,7 +16,6 @@ function wait(emitter: net.Socket, eventName: string, timeout: number) {
 
     // listen for the first event, then stop listening (once)
     emitter.once(eventName, (args: any) => {
-      console.log('connected!')
       clearTimeout(waitTimeout); // stop the timeout from executing
       if (!complete) {
         complete = true; // mark the job as done
@@ -38,6 +37,7 @@ function wait(emitter: net.Socket, eventName: string, timeout: number) {
       clearTimeout(waitTimeout); // stop the timeout from executing
       if (!complete) {
         complete = true;
+        console.error('error', e)
         reject(e);
       }
     });
@@ -68,6 +68,7 @@ export class Transport {
     };
 
     let result;
+
     // try {
     if (!this.socket) {
       this.socket = net.connect(options);
@@ -75,17 +76,18 @@ export class Transport {
       await wait(this.socket, 'connect', SOCKET_TIMEOUT);
     }
     result = await fn();
+    this.disconnect()
     return result;
   }
 
   send(byteArray: number[], timeoutMS, expectResponse: boolean = false) {
-    console.log(timeoutMS)
+ 
     return this.queue.add(() => (
       this.connect(() => {
-        const writeReturn = this.write(byteArray, timeoutMS);
+        this.write(byteArray, timeoutMS);
         let response;
         if (!expectResponse) {
-          response = writeReturn;
+          response = 2;
         } else {
           response = this.read(timeoutMS);
         }
@@ -93,29 +95,23 @@ export class Transport {
         return response;
       })
         .then(response => {
+
           return { response, queueSize: this.queue.getQueueLength() }
         })
     ));
   }
 
-  write(byteArray: number[], timeoutMS) {
-    return new Promise((resolve, reject) => {
-      const payload = bufferFromByteArray(byteArray)
-      if (timeoutMS > 0) {
-        this.socket.write(payload, 'binary', () => {
-          resolve(1)
-        });
-      } else {
-        this.socket.write(payload, 'binary');
-        resolve(3)
-      }
+  async write(byteArray: number[], timeoutMS): Promise<boolean> {
+    const payload = await bufferFromByteArray(byteArray);
+    const ret = await this.socket.write(payload, 'binary');
+    return ret;
 
 
-      // // wait for drain event which means all data has been sent
-      // if (!sent) {
-      //   wait(this.socket, 'drain', _timeout);
-      // }
-    })
+    // // wait for drain event which means all data has been sent
+    // if (!sent) {
+    //   wait(this.socket, 'drain', _timeout);
+    // }
+
 
   }
 
@@ -132,6 +128,7 @@ export class Transport {
   disconnect() {
     this.socket.end();
     this.socket.destroy();
+    this.socket = null;
   }
 
 }

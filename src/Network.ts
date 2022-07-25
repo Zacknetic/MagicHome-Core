@@ -16,7 +16,7 @@ export class Network {
 
   static network(): string[] {
     const ifaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces();
-    console.log(ifaces)
+    // console.log(ifaces)
     const results: string[] = [];
     Object.keys(ifaces).forEach((ifname: string) => {
       ifaces[ifname]!.forEach((iface: os.NetworkInterfaceInfo) => {
