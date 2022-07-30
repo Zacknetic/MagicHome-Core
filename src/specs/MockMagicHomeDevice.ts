@@ -15,7 +15,7 @@ export class MockMagicHomeDevice {
     constructor() {
         
         this.mockLEDState = DefaultAccessoryCommand;
-        this.mockDeviceSettings =  { LEDState: this.mockLEDState, controllerFirmwareVersion: 4, controllerHardwareVersion: 4, responseTimeMS: 500};
+        this.mockDeviceSettings =  { deviceState: this.mockLEDState, controllerFirmwareVersion: 4, controllerHardwareVersion: 4, responseTimeMS: 500};
     }
 
     // # sample message for 9-byte LEDENET transmit protocol (w/ checksum at end)
@@ -94,7 +94,7 @@ export class MockMagicHomeDevice {
     }
     
     private async mockGetDeviceState(mockCommandSettings?: IMockCommandSettings) {
-        const { LEDState: { isOn, RGB: { red, green, blue }, CCT: { warmWhite, coldWhite } }, controllerFirmwareVersion, controllerHardwareVersion, responseTimeMS } = this.mockDeviceSettings;
+        const { deviceState: { isOn, RGB: { red, green, blue }, CCT: { warmWhite, coldWhite } }, controllerFirmwareVersion, controllerHardwareVersion, responseTimeMS } = this.mockDeviceSettings;
         const onState = isOn ? 0x23 : 0x24;
         const returnData = [0x81, controllerHardwareVersion, onState, 0x00, 0x00, 0x00, red, green, blue, warmWhite, controllerFirmwareVersion, coldWhite, 0x0F, 0x68];
         sleep(responseTimeMS ?? 100);

@@ -1,10 +1,10 @@
-import { DeviceInterface } from '../DeviceInterface'
-import { ICommandOptions, ICommandResponse, IDeviceCommand } from '../types';
+// import { DeviceInterface } from '../DeviceInterface'
+// import { ICommandOptions, ICommandResponse, IDeviceCommand } from '../types';
 
-import { DeviceDiscovery } from '../DeviceDiscovery';
-import * as types from '../types'
+// import { DeviceDiscovery } from '../DeviceDiscovery';
+// import * as types from '../types'
 
-const deviceDiscovery = new DeviceDiscovery();
+// const deviceDiscovery = new DeviceDiscovery();
 
 // describe('Test the scan function for DeviceDiscovery.ts', function () {
 

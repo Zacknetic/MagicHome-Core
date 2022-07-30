@@ -5,6 +5,7 @@ export const DEVICE_COMMANDS = {
 }
 
 export const EventNumber = new Map([
+    [-8, 'device unresponsive'],
     [-7, 'socket reported error'],
     [-6, 'command/query timed out'],
     [-5, 'duplicate power command'],
@@ -14,7 +15,8 @@ export const EventNumber = new Map([
     [-1, 'unknown failure'],
     [0, 'unnecessary query command, query already queued'],
     [1, 'device responded with valid state'],
-    [2, 'read state timeout not requested']
+    [2, 'read state timeout not requested'],
+    [3, 'write confirmation not requested']
 ]);
 
 export interface IDeviceDiscoveredProps {
@@ -37,7 +39,7 @@ export const CommandDefaults: ICommandOptions = {
     timeoutMS: 50,
     bufferMS: 20,
     commandType: COMMAND_TYPE.COLOR_COMMAND,
-    remainingRetries: 5,
+    maxRetries: 5,
 }
 /**
  * @field timeoutMS?: number
@@ -52,8 +54,8 @@ export interface ICommandOptions {
     readonly bufferMS?: number;
     readonly commandType: string;
     readonly isEightByteProtocol?: boolean;
-    remainingRetries: number;
     maxRetries?: number;
+    remainingRetries?: number;
 }
 
 export const CommandOptionDefaults: ICommandOptions = {
@@ -61,7 +63,6 @@ export const CommandOptionDefaults: ICommandOptions = {
     bufferMS: 20,
     commandType: 'powerCommand',
     isEightByteProtocol: false,
-    remainingRetries: 0,
     maxRetries: 0,
 }
 
@@ -77,12 +78,6 @@ export interface IIncompleteCommand {
     readonly RGB?: IColorRGB;
     readonly CCT?: IColorCCT;
     colorMask?: number;
-}
-
-export interface ILEDState {
-    readonly isOn: boolean;
-    readonly RGB: IColorRGB;
-    readonly CCT: IColorCCT;
 }
 
 export interface IColorRGB {
@@ -113,22 +108,13 @@ export interface IDeviceMetaData {
     rawData?: Buffer;
 }
 
-
-export interface ICommandResponse {
-    responseCode: number;
-    readonly deviceCommand: IDeviceCommand | null;
-    readonly deviceState: IDeviceState | null;
-}
-
 export interface ITransportResponse {
     responseCode: number;
     deviceCommand?: IDeviceCommand;
+    commandOptions?: ICommandOptions;
     deviceState?: IDeviceState;
     deviceMetaData?: IDeviceMetaData;
-    msg?: any;
-    queueSize?: number;
-    remainingRetries?: number;
-    maxRetries?: number;
+    responseMsg?: any;
 }
 
 export interface IQueueOptions {
@@ -140,7 +126,7 @@ export interface IQueueOptions {
 /*******************************MOCK SETTINGS****************** */
 
 export interface IMockDeviceSettings {
-    LEDState: ILEDState;
+    deviceState: IDeviceState;
     controllerHardwareVersion: number;
     controllerFirmwareVersion: number;
     responseTimeMS: number;

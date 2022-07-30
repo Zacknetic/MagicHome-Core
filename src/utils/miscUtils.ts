@@ -1,6 +1,6 @@
 import { IDeviceMetaData, IDeviceResponse, IDeviceState } from "../types";
 
-export function bufferToDeviceState(data: Buffer): IDeviceResponse {
+export function bufferToDeviceResponse(data: Buffer): IDeviceResponse {
 if(!Buffer.isBuffer(data) || data.length < 14) return null;
 
   const deviceResponse: IDeviceResponse = {
@@ -75,6 +75,10 @@ export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
   return true;
 }
 
-function isObject(object) {
+export function isObject(object) {
   return object != null && typeof object === 'object';
+}
+
+export function sleepTimeout(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

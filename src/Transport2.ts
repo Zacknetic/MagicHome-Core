@@ -2,7 +2,7 @@ import net from 'net';
 import Queue from 'promise-queue';
 import { _ } from 'lodash'
 import { bufferFromByteArray, calcChecksum } from './utils/miscUtils';
-import { ICommandResponse, ITransportResponse } from './types';
+import { ITransportResponse } from './types';
 
 const COMMAND_QUERY_STATE: Uint8Array = Uint8Array.from([0x81, 0x8a, 0x8b]);
 
