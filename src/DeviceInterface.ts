@@ -44,14 +44,14 @@ export class DeviceInterface {
      * @returns ITransportResponse
      */
 
-    public async queryState(commandOptions: ICommandOptions): Promise<ITransportResponse> {
-        commandOptions = Object.assign({}, commandOptions, types.CommandOptionDefaults, { commandType: QUERY_COMMAND });
+    public async queryState(timeoutMS: number): Promise<ITransportResponse> {
+        const commandOptions = Object.assign({}, {timeoutMS}, types.CommandOptionDefaults, { commandType: QUERY_COMMAND });
         const byteArray = commandToByteArray(null, commandOptions);
-        const transportResponse: ITransportResponse = await this.transport.send(byteArray, 500, true).catch(err => { return false });
+        const transportResponse: ITransportResponse = await this.transport.send(byteArray, timeoutMS, true).catch(err => { return false });
         const stateBuffer = transportResponse.responseMsg;
         const deviceResponse: IDeviceResponse = bufferToDeviceResponse(stateBuffer);
-        Object.assign(transportResponse, deviceResponse);
-        return transportResponse;
+        const ret = Object.assign(transportResponse, deviceResponse);
+        return ret;
     }
 
     public sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
@@ -61,7 +61,6 @@ export class DeviceInterface {
             this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false);
         });
 
-      
         return this.handleReponse(commandOptions, deviceCommand)
     }
 
@@ -74,7 +73,7 @@ export class DeviceInterface {
             this.retryCommandTimeout = setTimeout(async () => {
                 this.cantCancel = true;
                 if (this.queue.getQueueLength() < 1 && commandOptions.remainingRetries > 0) {
-                    updatedResponse = await this.queryState(commandOptions);
+                    updatedResponse = await this.queryState(commandOptions.timeoutMS);
                     let deviceState, deviceMetaData, isValidState;
                     if (updatedResponse) {
                         deviceState = updatedResponse.deviceState;
@@ -90,7 +89,8 @@ export class DeviceInterface {
                     }
                 } else {
                     this.cantCancel = false;
-                    resolve('waiting')
+                    updatedResponse = {responseMsg: "waiting", responseCode: 0}
+                    return updatedResponse;
                 }
             }, RETRY_WAIT_MS);
         });

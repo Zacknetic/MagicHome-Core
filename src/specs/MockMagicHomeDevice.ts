@@ -1,4 +1,4 @@
-import { IDeviceState, ILEDState, IMockCommandSettings, IMockDeviceSettings, IMockLEDState } from "../types";
+import { IDeviceState, IMockCommandSettings, IMockDeviceSettings, IMockLEDState } from "../types";
 import * as types from '../types';
 
 const {

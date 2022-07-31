@@ -19,13 +19,16 @@ export const EventNumber = new Map([
     [3, 'write confirmation not requested']
 ]);
 
-export interface IDeviceDiscoveredProps {
-    ipAddress?: string;
-    uniqueId?: string;
-    modelNumber?: string;
-    hardwareVersion?: number;
-    firmwareVersion?: number;
-    latestUpdate?: string;
+export interface IProtoDevice {
+    ipAddress: string;
+    uniqueId: string;
+    modelNumber: string;
+}
+
+export interface ICompleteDevice {
+    protoDevice: IProtoDevice;
+    deviceResponse: IDeviceResponse;
+    latestUpdate: number;
 }
 
 export const COMMAND_TYPE = {
