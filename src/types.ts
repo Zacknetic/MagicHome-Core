@@ -1,3 +1,5 @@
+import { DeviceInterface } from "./DeviceInterface";
+
 export const DEVICE_COMMANDS = {
     COMMAND_POWER_ON: [0x71, 0x23, 0x0f],
     COMMAND_POWER_OFF: [0x71, 0x24, 0x0f],
@@ -27,7 +29,8 @@ export interface IProtoDevice {
 
 export interface ICompleteDevice {
     protoDevice: IProtoDevice;
-    deviceResponse: IDeviceResponse;
+    transportResponse: ITransportResponse;
+    deviceInterface: DeviceInterface;
     latestUpdate: number;
 }
 
@@ -38,12 +41,6 @@ export const COMMAND_TYPE = {
     QUERY_COMMAND: 'queryCommand',
 }
 
-export const CommandDefaults: ICommandOptions = {
-    timeoutMS: 50,
-    bufferMS: 20,
-    commandType: COMMAND_TYPE.COLOR_COMMAND,
-    maxRetries: 5,
-}
 /**
  * @field timeoutMS?: number
  * @field bufferMS?: number
@@ -57,6 +54,7 @@ export interface ICommandOptions {
     readonly bufferMS?: number;
     readonly commandType: string;
     readonly isEightByteProtocol?: boolean;
+    readonly waitForResponse: boolean;
     maxRetries?: number;
     remainingRetries?: number;
 }
@@ -66,6 +64,7 @@ export const CommandOptionDefaults: ICommandOptions = {
     bufferMS: 20,
     commandType: 'powerCommand',
     isEightByteProtocol: false,
+    waitForResponse: false,
     maxRetries: 0,
 }
 

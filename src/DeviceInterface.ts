@@ -10,11 +10,12 @@ import Queue from 'promise-queue';
 import * as types from './types';
 import { bufferToDeviceResponse, deepEqual, sleepTimeout } from './utils/miscUtils';
 
-const RETRY_WAIT_MS = 2000;
+const RETRY_WAIT_MS = 1000;
 const RETRY_QUERY_MS = 1000;
 const RESET_LATEST_POWER_COMMAND_MS = 2000;
 
 const {
+    ColorMasks: { white, color, both },
     DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
     COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND }
 } = types;
@@ -45,61 +46,78 @@ export class DeviceInterface {
      */
 
     public async queryState(timeoutMS: number): Promise<ITransportResponse> {
-        const commandOptions = Object.assign({}, {timeoutMS}, types.CommandOptionDefaults, { commandType: QUERY_COMMAND });
+        const commandOptions = Object.assign({}, types.CommandOptionDefaults, { timeoutMS }, { commandType: QUERY_COMMAND });
         const byteArray = commandToByteArray(null, commandOptions);
-        const transportResponse: ITransportResponse = await this.transport.send(byteArray, timeoutMS, true).catch(err => { return false });
+        const transportResponse: ITransportResponse = await this.transport.send(byteArray, timeoutMS, true);
         const stateBuffer = transportResponse.responseMsg;
         const deviceResponse: IDeviceResponse = bufferToDeviceResponse(stateBuffer);
-        const ret = Object.assign(transportResponse, deviceResponse);
+        const ret = Object.assign({}, transportResponse, deviceResponse);
         return ret;
     }
 
-    public sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
+    public async sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
         const byteArray = commandToByteArray(deviceCommand, commandOptions);
         this.queue.add(async () => {
-            await waitforme(50)
             this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false);
         });
-
-        return this.handleReponse(commandOptions, deviceCommand)
+     
+        // if (!commandOptions.waitForResponse) {
+        //     return true;
+        // } else {
+            if (!commandOptions.maxRetries) commandOptions.maxRetries = commandOptions.remainingRetries;
+            return this.handleReponse(commandOptions, deviceCommand);
+        // }
     }
 
     protected handleReponse(commandOptions: ICommandOptions, deviceCommand: IDeviceCommand): Promise<ITransportResponse> {
         if (!this.cantCancel) this.clearRetryCommandTimeout();
 
-        let updatedResponse: ITransportResponse;
+        let updatedResponse;
+        if (this.queue.getQueueLength() < 1 && commandOptions.remainingRetries > 0) {
+            this.cantCancel = true;
 
-        return new Promise((resolve) => {
-            this.retryCommandTimeout = setTimeout(async () => {
-                this.cantCancel = true;
-                if (this.queue.getQueueLength() < 1 && commandOptions.remainingRetries > 0) {
-                    updatedResponse = await this.queryState(commandOptions.timeoutMS);
+            return new Promise(async (resolve, reject) => {
+                this.retryCommandTimeout = setTimeout(async () => {
+
+                    updatedResponse = await this.queryState(1000);
                     let deviceState, deviceMetaData, isValidState;
                     if (updatedResponse) {
                         deviceState = updatedResponse.deviceState;
                         deviceMetaData = updatedResponse.deviceMetaData;
                         isValidState = this.isValidState(deviceCommand, updatedResponse, commandOptions)
                     }
-                    if (updatedResponse == undefined || (!isValidState ?? null)) {
+                    if (!updatedResponse || updatedResponse == undefined || !isValidState) {
                         commandOptions.remainingRetries--;
-                        return this.sendCommand(deviceCommand, commandOptions);
+                        const byteArray = commandToByteArray(deviceCommand, commandOptions);
+                        this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false);
+                        this.handleReponse(commandOptions, deviceCommand).then(ret => { console.log('WHOOPS') });
                     } else {
                         this.cantCancel = false
                         resolve(updatedResponse)
                     }
-                } else {
-                    this.cantCancel = false;
-                    updatedResponse = {responseMsg: "waiting", responseCode: 0}
-                    return updatedResponse;
-                }
-            }, RETRY_WAIT_MS);
-        });
 
+                }, RETRY_WAIT_MS);
+            });
 
+        } else {
+            // console.log('oops')
+            //     this.cantCancel = false;
+            //     updatedResponse = { responseMsg: "waiting", responseCode: 0 }
+            //     return 'oops';
+        }
     }
 
     protected isValidState(deviceCommand: IDeviceCommand, deviceResponse: ITransportResponse, commandOptions?: ICommandOptions): boolean {
-        const isEqual = deepEqual(deviceCommand, deviceResponse.deviceState, ['colorMask']);
+        // console.log(deviceCommand, deviceResponse.deviceState)
+        let isEqual = false;
+        let omitItems;
+        if (commandOptions.commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
+        else if (deviceCommand.colorMask == white) omitItems = ["RGB"];
+        else omitItems = ["CCT"]
+
+
+        isEqual = deepEqual(deviceCommand, deviceResponse.deviceState, ['colorMask', ...omitItems]);
+
         return isEqual;
     }
 
@@ -110,7 +128,7 @@ export class DeviceInterface {
     }
 
     testLatestPowerCommand(isOn: boolean) {
-        console.log(this.latestPowerCommand)
+        // console.log(this.latestPowerCommand)
         if (isOn === this.latestPowerCommand) {
             console.log('DOUBLE POWER COMMAND')
             return false;

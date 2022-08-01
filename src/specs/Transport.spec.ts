@@ -87,31 +87,31 @@
 //     it('Should set the device color to red, green, blue', async function () {
 
 
-//         asyncMethod(red, false, 0).then((returnValue) => {
+//         asyncMethod(COMMAND_POWER_ON, false, 0).then((returnValue) => {
 //             console.log(returnValue)
 //             // setImmediate(done)
 //         }).catch(err => {
 //             console.log('FATAL err', err)
 //         })
 
-//         await sleep(500)
+//         // await sleep(500)
 
-//         asyncMethod(green, false, 0).then((returnValue) => {
-//             console.log(returnValue)
-//             // setImmediate(done)
-//         }).catch(err => {
-//             console.log('FATAL err', err)
-//         })
+//         // asyncMethod(green, false, 0).then((returnValue) => {
+//         //     console.log(returnValue)
+//         //     // setImmediate(done)
+//         // }).catch(err => {
+//         //     console.log('FATAL err', err)
+//         // })
 
-//         await sleep(500)
-//         asyncMethod(blue, false, 0).then((returnValue) => {
-//             console.log(returnValue)
-//             // setImmediate(done)
-//             // setImmediate(done)
+//         // await sleep(500)
+//         // asyncMethod(blue, false, 0).then((returnValue) => {
+//         //     console.log(returnValue)
+//         //     // setImmediate(done)
+//         //     // setImmediate(done)
 
-//         }).catch(err => {
-//             console.log('FATAL err', err)
-//         })
+//         // }).catch(err => {
+//         //     console.log('FATAL err', err)
+//         // })
 //     })
 // });
 

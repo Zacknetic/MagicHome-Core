@@ -16,8 +16,8 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             //     const transportResponse: ITransportResponse = { responseCode: -5, deviceState: null, deviceCommand }
             //     throw transportResponse;
             // }
-            //construct the power command byte array
-            // commandByteArray = deviceCommand.isOn ? COMMAND_POWER_ON : COMMAND_POWER_OFF;
+            // construct the power command byte array
+            commandByteArray = deviceCommand.isOn ? COMMAND_POWER_ON : COMMAND_POWER_OFF;
             break;
 
         case COLOR_COMMAND:

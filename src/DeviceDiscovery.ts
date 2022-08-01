@@ -2,7 +2,7 @@ import * as dgram from 'dgram';
 import { Network } from './Network';
 import { DeviceInterface } from './DeviceInterface';
 import { Transport } from './Transport';
-import { IProtoDevice, ICompleteDevice, IDeviceResponse } from './types';
+import { IProtoDevice, ICompleteDevice, IDeviceResponse, ITransportResponse } from './types';
 import { sleepTimeout } from './utils/miscUtils';
 
 const BROADCAST_PORT: number = 48899;
@@ -42,7 +42,7 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
     if (parts.length !== 3) return;
 
     const [ipAddress, uniqueId, modelNumber] = parts;
-    if (protoDevicesSet.has(address)) return;
+    if (protoDevicesSet.has(uniqueId)) return;
 
     protoDevicesList.push({
       ipAddress,
@@ -63,24 +63,22 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
  * @param timeout number
  * @returns completeDevice[]
  */
-export async function completeDevices(protoDevices: IProtoDevice[], timeout = 500) {
+export async function completeDevices(protoDevices: IProtoDevice[], timeout = 500): Promise<ICompleteDevice[]> {
   if (protoDevices.length < 1) return;
-  const completeDevicesMap = [];
+  const completeDevices: ICompleteDevice[] = [];
   for (const protoDevice of protoDevices) {
     const transport = new Transport(protoDevice.ipAddress);
     const deviceInterface = new DeviceInterface(transport);
-    const transportResponse = await deviceInterface.queryState(timeout);
+    const transportResponse: ITransportResponse = await deviceInterface.queryState(timeout);
 
     if (transportResponse.deviceMetaData) {
-      let deviceResponse = { deviceState: {}, deviceMetaData: {}, latestUpdate: Date.now() };
-      deviceResponse.deviceState = transportResponse.deviceState;
-      deviceResponse.deviceMetaData = transportResponse.deviceMetaData;
-      const completeDevice = { protoDevice, deviceResponse, deviceInterface }
-      completeDevicesMap.push(completeDevice);
+      // let deviceResponse = { deviceState: {}, deviceMetaData: {} };
+      // deviceResponse.deviceState = transportResponse.deviceState;
+      // deviceResponse.deviceMetaData = transportResponse.deviceMetaData;
+      const completeDevice: ICompleteDevice = { protoDevice, transportResponse, deviceInterface, latestUpdate: Date.now() }
+      completeDevices.push(completeDevice);
     }
-
-
   };
 
-  return completeDevicesMap;
+  return completeDevices;
 }
