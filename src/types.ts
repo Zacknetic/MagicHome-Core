@@ -27,10 +27,22 @@ export interface IProtoDevice {
     modelNumber: string;
 }
 
+export interface ICustomProtoDevice {
+    ipAddress: string;
+    uniqueId?: string;
+    modelNumber?: string;
+}
+
 export interface ICompleteDevice {
     protoDevice: IProtoDevice;
-    transportResponse: ITransportResponse;
+    completeResponse: ICompleteResponse;
     deviceInterface: DeviceInterface;
+    latestUpdate: number;
+}
+
+export interface ICustomCompleteDevice {
+    customProtoDevice: ICustomProtoDevice,
+    completeResponse: ICompleteResponse;
     latestUpdate: number;
 }
 
@@ -93,11 +105,6 @@ export interface IColorCCT {
     readonly coldWhite: number;
 }
 
-export interface IDeviceResponse {
-    deviceState: IDeviceState;
-    deviceMetaData: IDeviceMetaData;
-}
-
 export interface IDeviceState {
     readonly isOn: boolean;
     readonly RGB: IColorRGB;
@@ -105,18 +112,23 @@ export interface IDeviceState {
 }
 
 export interface IDeviceMetaData {
-    controllerHardwareVersion?: number;
-    controllerFirmwareVersion?: number;
-    rawData?: Buffer;
+    controllerHardwareVersion: number;
+    controllerFirmwareVersion: number;
+    rawData: Buffer;
 }
 
-export interface ITransportResponse {
+export interface ICompleteResponse {
     responseCode: number;
     deviceCommand?: IDeviceCommand;
     commandOptions?: ICommandOptions;
-    deviceState?: IDeviceState;
-    deviceMetaData?: IDeviceMetaData;
+    deviceState: IDeviceState;
+    deviceMetaData: IDeviceMetaData;
     responseMsg?: any;
+}
+
+export interface ITransportResponse {
+    responseCode: number,
+    responseMsg: Buffer;
 }
 
 export interface IQueueOptions {
@@ -146,27 +158,14 @@ export interface IMockLEDState {
     CCT: IColorCCT;
 }
 
-export const DefaultAccessoryCommand = {
-    isOn: false,
-    RGB: {
-        red: 0,
-        green: 0,
-        blue: 0
-    },
-
-    CCT: {
-        warmWhite: 0,
-        coldWhite: 0,
-    }
-};
-
 export const ColorMasks = {
     white: 0x0F,
     color: 0xF0,
     both: 0xFF,
 }
 
-export const DefaultCommand: IDeviceCommand = {
+
+export const defaultCommand: IDeviceCommand = {
     isOn: false,
     RGB: {
         red: 0,
@@ -178,4 +177,34 @@ export const DefaultCommand: IDeviceCommand = {
         coldWhite: 0,
     },
     colorMask: ColorMasks.color,
+}
+
+export const defaultRGB: IColorRGB = {
+    red: 0,
+    green: 0,
+    blue: 0,
+}
+
+export const defaultCCT: IColorCCT = {
+    warmWhite: 0,
+    coldWhite: 0,
+}
+
+export const defaultDeviceState: IDeviceState = {
+    isOn: false,
+    RGB: defaultRGB,
+    CCT: defaultCCT
+}
+
+export const defaultDeviceMetaData: IDeviceMetaData = {
+    controllerFirmwareVersion: -1,
+    controllerHardwareVersion: -1,
+    rawData: Buffer.from("0"),
+}
+
+
+ export const defaultCompleteResponse: ICompleteResponse = {
+    responseCode: 0,
+    deviceState: defaultDeviceState,
+    deviceMetaData: defaultDeviceMetaData,
 }

@@ -55,7 +55,7 @@ export class Transport {
     this.connect();
     this.write(byteArray);
 
-    let transportResponse: ITransportResponse = { responseCode: 2 };
+    let transportResponse: ITransportResponse = { responseCode: 2, responseMsg: Buffer.from("0") };
 
     if (expectResponse) {
       const responseMsg = await this.read(timeoutMS);

@@ -2,8 +2,10 @@ import * as dgram from 'dgram';
 import { Network } from './Network';
 import { DeviceInterface } from './DeviceInterface';
 import { Transport } from './Transport';
-import { IProtoDevice, ICompleteDevice, IDeviceResponse, ITransportResponse } from './types';
+import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICustomCompleteDevice } from './types';
 import { sleepTimeout } from './utils/miscUtils';
+import { v1 as UUID } from 'uuid';
+
 
 const BROADCAST_PORT: number = 48899;
 const BROADCAST_MAGIC_STRING: string = 'HF-A11ASSISTHREAD';
@@ -69,16 +71,38 @@ export async function completeDevices(protoDevices: IProtoDevice[], timeout = 50
   for (const protoDevice of protoDevices) {
     const transport = new Transport(protoDevice.ipAddress);
     const deviceInterface = new DeviceInterface(transport);
-    const transportResponse: ITransportResponse = await deviceInterface.queryState(timeout);
+    const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout);
 
-    if (transportResponse.deviceMetaData) {
+    if (completeResponse.deviceMetaData) {
       // let deviceResponse = { deviceState: {}, deviceMetaData: {} };
-      // deviceResponse.deviceState = transportResponse.deviceState;
-      // deviceResponse.deviceMetaData = transportResponse.deviceMetaData;
-      const completeDevice: ICompleteDevice = { protoDevice, transportResponse, deviceInterface, latestUpdate: Date.now() }
+      // deviceResponse.deviceState = completeResponse.deviceState;
+      // deviceResponse.deviceMetaData = completeResponse.deviceMetaData;
+      const completeDevice: ICompleteDevice = { protoDevice, completeResponse, deviceInterface, latestUpdate: Date.now() }
       completeDevices.push(completeDevice);
     }
   };
+
+  return completeDevices;
+}
+
+/**
+ * 
+ * @param protoDevices IProtoDevice[]
+ * @param timeout number
+ * @returns completeDevice[]
+ */
+export function completeCustomDevices(customCompleteDevices: ICustomCompleteDevice[]): ICompleteDevice[] {
+  const completeDevices: ICompleteDevice[] = [];
+  for (const customCompleteDevice of customCompleteDevices) {
+    let { customProtoDevice, completeResponse, latestUpdate } = customCompleteDevice;
+    const transport = new Transport(customProtoDevice.ipAddress);
+    const deviceInterface = new DeviceInterface(transport);
+    const protoDevice = Object.assign({}, { uniqueId: UUID(), modelNumber: 'unknown' }, customProtoDevice);
+
+    const completeDevice: ICompleteDevice = { protoDevice, completeResponse, deviceInterface, latestUpdate };
+
+    completeDevices.push(completeDevice);
+  }
 
   return completeDevices;
 }

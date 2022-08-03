@@ -1,5 +1,5 @@
 import * as types from '../types';
-import { ICommandOptions, IDeviceCommand, IDeviceResponse, IDeviceState, ITransportResponse } from '../types'
+import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, defaultCompleteResponse } from '../types'
 
 const {
     DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
@@ -46,8 +46,8 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             //construct animation frame byte array
             break;
         default:
-            const transportResponse: ITransportResponse = { responseCode: -1, deviceState: null, deviceCommand }
-            throw transportResponse;
+            const completeResponse: ICompleteResponse = Object.assign({}, defaultCompleteResponse, { esponseCode: -1, deviceState: null, deviceCommand });
+            throw completeResponse;
     }
 
     return commandByteArray;

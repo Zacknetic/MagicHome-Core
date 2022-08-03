@@ -1,11 +1,12 @@
-import { IDeviceMetaData, IDeviceResponse, IDeviceState } from "../types";
+import { ICompleteResponse } from "../types";
 
-export function bufferToDeviceResponse(data: Buffer): IDeviceResponse {
-if(!Buffer.isBuffer(data) || data.length < 14) return null;
+export function bufferToDeviceResponse(data: Buffer): ICompleteResponse {
+  if (!Buffer.isBuffer(data) || data.length < 14) return null;
 
-  const deviceResponse: IDeviceResponse = {
+  const completeResponse: ICompleteResponse = {
+
+    responseCode: 1,
     deviceState: {
-
       isOn: data.readUInt8(2) === 0x23,
       RGB: {
         red: data.readUInt8(6),
@@ -25,8 +26,8 @@ if(!Buffer.isBuffer(data) || data.length < 14) return null;
     }
 
   }
-  
-  return deviceResponse;
+
+  return completeResponse;
 }
 
 export function calcChecksum(buffer: Uint8Array) {

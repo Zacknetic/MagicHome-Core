@@ -15,7 +15,7 @@ let transport;
 
 
 async function asyncMethod(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
-    const party: types.ITransportResponse = await deviceInterface.sendCommand(deviceCommand, commandOptions);
+    const party: types.ICompleteResponse = await deviceInterface.sendCommand(deviceCommand, commandOptions);
     return party
 }
 
@@ -64,7 +64,7 @@ describe('Set the device state to red, green, blue, warmWhite at a 500ms interva
         const commandOptions: ICommandOptions = { waitForResponse: true, maxRetries: 20, remainingRetries: 20, commandType: COLOR_COMMAND, timeoutMS: 0, isEightByteProtocol: true };
 
         // await sleep(500);
-        asyncMethod(deviceCommand, commandOptions).then((returnValue: types.ITransportResponse) => {
+        asyncMethod(deviceCommand, commandOptions).then((returnValue: types.ICompleteResponse) => {
             console.log('return value: ', returnValue);
         }).catch(err => {
             console.log('FATAL err', err);

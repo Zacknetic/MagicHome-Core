@@ -1,10 +1,10 @@
-import { IDeviceState, IMockCommandSettings, IMockDeviceSettings, IMockLEDState } from "../types";
+import { IMockCommandSettings, IMockDeviceSettings, IMockLEDState } from "../types";
 import * as types from '../types';
 
 const {
     DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
     COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND },
-    DefaultAccessoryCommand
+    defaultCommand
 } = types;
 
 const needsPowerCommand = false;
@@ -14,7 +14,7 @@ export class MockMagicHomeDevice {
     protected mockDeviceSettings: IMockDeviceSettings
     constructor() {
         
-        this.mockLEDState = DefaultAccessoryCommand;
+        this.mockLEDState = defaultCommand;
         this.mockDeviceSettings =  { deviceState: this.mockLEDState, controllerFirmwareVersion: 4, controllerHardwareVersion: 4, responseTimeMS: 500};
     }
 
