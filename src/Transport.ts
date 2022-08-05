@@ -1,5 +1,4 @@
 import net from 'net';
-import Queue from 'promise-queue';
 import { ITransportResponse } from './types';
 import { bufferFromByteArray } from './utils/miscUtils';
 // import net from './tests/mock-net';
@@ -37,13 +36,13 @@ export class Transport {
 
     // clearTimeout(this.waitTimeout);
 
-    setTimeout(() => {
-      if (this.socket) {
+    // setTimeout(() => {
+    //   if (this.socket) {
   
-        this.socket.destroy();
-        this.socket = null;
-      }
-    }, SOCKET_TIMEOUT)
+    //     this.socket.destroy();
+    //     this.socket = null;
+    //   }
+    // }, SOCKET_TIMEOUT)
 
 
     return result;
