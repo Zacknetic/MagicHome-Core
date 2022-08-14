@@ -2,8 +2,8 @@ import * as dgram from 'dgram';
 import { Network } from './Network';
 import { DeviceInterface } from './DeviceInterface';
 import { Transport } from './Transport';
-import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICustomCompleteDevice } from './types';
-import { sleepTimeout } from './utils/miscUtils';
+import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICustomCompleteDevice, ICompleteDeviceInfo } from './types';
+import { mergeDeep, sleepTimeout } from './utils/miscUtils';
 import { v1 as UUID } from 'uuid';
 
 
@@ -74,10 +74,9 @@ export async function completeDevices(protoDevices: IProtoDevice[], timeout = 50
     const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout);
 
     if (completeResponse.deviceMetaData) {
-      // let deviceResponse = { deviceState: {}, deviceMetaData: {} };
-      // deviceResponse.deviceState = completeResponse.deviceState;
-      // deviceResponse.deviceMetaData = completeResponse.deviceMetaData;
-      const completeDevice: ICompleteDevice = { protoDevice, completeResponse, deviceInterface, latestUpdate: Date.now() }
+
+      const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice }
+      const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, latestUpdate: Date.now(), completeDeviceInfo }
       completeDevices.push(completeDevice);
     }
   };
@@ -94,12 +93,14 @@ export async function completeDevices(protoDevices: IProtoDevice[], timeout = 50
 export function completeCustomDevices(customCompleteDevices: ICustomCompleteDevice[]): ICompleteDevice[] {
   const completeDevices: ICompleteDevice[] = [];
   for (const customCompleteDevice of customCompleteDevices) {
-    let { customProtoDevice, completeResponse, latestUpdate } = customCompleteDevice;
+    let { completeDeviceInfo, completeResponse, latestUpdate, } = customCompleteDevice;
     const transport = new Transport(customProtoDevice.ipAddress);
     const deviceInterface = new DeviceInterface(transport);
-    const protoDevice = Object.assign({}, { uniqueId: UUID(), modelNumber: 'unknown' }, customProtoDevice);
+    let protoDevice;
 
-    const completeDevice: ICompleteDevice = { protoDevice, completeResponse, deviceInterface, latestUpdate };
+    mergeDeep(protoDevice, customProtoDevice, { uniqueId: UUID(), modelNumber: 'unknown' });
+    const completeDeviceInfo: ICompleteDeviceInfo = {protoDevice, }
+    const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, latestUpdate };
 
     completeDevices.push(completeDevice);
   }

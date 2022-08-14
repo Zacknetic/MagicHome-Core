@@ -21,6 +21,7 @@ export const EventNumber = new Map([
     [3, 'write confirmation not requested']
 ]);
 
+
 export interface IProtoDevice {
     ipAddress: string;
     uniqueId: string;
@@ -33,15 +34,20 @@ export interface ICustomProtoDevice {
     modelNumber?: string;
 }
 
-export interface ICompleteDevice {
+export interface ICompleteDeviceInfo {
     protoDevice: IProtoDevice;
+    deviceMetaData: IDeviceMetaData;
+}
+
+export interface ICompleteDevice {
+    completeDeviceInfo: ICompleteDeviceInfo;
     completeResponse: ICompleteResponse;
     deviceInterface: DeviceInterface;
     latestUpdate: number;
 }
 
 export interface ICustomCompleteDevice {
-    customProtoDevice: ICustomProtoDevice,
+    completeDeviceInfo: ICompleteDeviceInfo;
     completeResponse: ICompleteResponse;
     latestUpdate: number;
 }
@@ -81,17 +87,17 @@ export const CommandOptionDefaults: ICommandOptions = {
 }
 
 export interface IDeviceCommand {
-    isOn: boolean;
+    readonly isOn: boolean;
     readonly RGB: IColorRGB;
     readonly CCT: IColorCCT;
-    colorMask: number;
+    readonly colorMask: number;
 }
 
 export interface IIncompleteCommand {
-    isOn?: boolean;
+    readonly isOn?: boolean;
     readonly RGB?: IColorRGB;
     readonly CCT?: IColorCCT;
-    colorMask?: number;
+    readonly colorMask?: number;
 }
 
 export interface IColorRGB {
@@ -164,21 +170,6 @@ export const ColorMasks = {
     both: 0xFF,
 }
 
-
-export const defaultCommand: IDeviceCommand = {
-    isOn: false,
-    RGB: {
-        red: 0,
-        green: 0,
-        blue: 0,
-    },
-    CCT: {
-        warmWhite: 0,
-        coldWhite: 0,
-    },
-    colorMask: ColorMasks.color,
-}
-
 export const defaultRGB: IColorRGB = {
     red: 0,
     green: 0,
@@ -196,6 +187,16 @@ export const defaultDeviceState: IDeviceState = {
     CCT: defaultCCT
 }
 
+export const defaultCommand: IDeviceCommand = {
+    isOn: false,
+    RGB: defaultRGB,
+    CCT: defaultCCT,
+    colorMask: ColorMasks.color,
+}
+
+
+
+
 export const defaultDeviceMetaData: IDeviceMetaData = {
     controllerFirmwareVersion: -1,
     controllerHardwareVersion: -1,
@@ -203,7 +204,7 @@ export const defaultDeviceMetaData: IDeviceMetaData = {
 }
 
 
- export const defaultCompleteResponse: ICompleteResponse = {
+export const defaultCompleteResponse: ICompleteResponse = {
     responseCode: 0,
     deviceState: defaultDeviceState,
     deviceMetaData: defaultDeviceMetaData,
