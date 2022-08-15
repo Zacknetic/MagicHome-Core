@@ -2,21 +2,21 @@
 // const MEDIUM_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 100 };
 // const FAST_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 20 };
 
-import { ICommandOptions, IDeviceCommand, ICompleteResponse } from './types';
+import { ICommandOptions, IDeviceCommand, ICompleteResponse, DEFAULT_COMMAND_OPTIONS } from './types';
+import * as types from './types'
 import { Transport } from './Transport';
 import { commandToByteArray } from './utils/coreUtils';
 import Queue from 'promise-queue';
 
-import * as types from './types';
-import { bufferToDeviceResponse as bufferToCompleteResponse, deepEqual, sleepTimeout } from './utils/miscUtils';
+import { bufferToDeviceResponse as bufferToCompleteResponse, deepEqual, mergeDeep, sleepTimeout } from './utils/miscUtils';
 
 const RETRY_WAIT_MS = 1000;
 const RETRY_QUERY_MS = 1000;
 const RESET_LATEST_POWER_COMMAND_MS = 2000;
 
 const {
-    ColorMasks: { white, color, both },
-    DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
+    COLOR_MASKS: { WHITE, COLOR, BOTH },
+    DEVICE_COMMAND_BYTES: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
     COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND }
 } = types;
 
@@ -29,11 +29,11 @@ export class DeviceInterface {
     protected testPowerStateTimeout: NodeJS.Timeout;
     protected retryCommandTimeout: NodeJS.Timeout = null;
 
-    protected transport;
+    protected transport: Transport;
     cantCancel: boolean = false;
-    constructor(transport) {
+    constructor(transport: Transport) {
         this.transport = transport;
-        this.queue = new Queue(1, 1); // 1 concurrent, infinite size
+        this.queue = new Queue(1, 50); // 1 concurrent, infinite size
 
     }
 
@@ -46,9 +46,12 @@ export class DeviceInterface {
      */
 
     public async queryState(timeoutMS: number): Promise<ICompleteResponse> {
-        const commandOptions = Object.assign({}, types.CommandOptionDefaults, { timeoutMS }, { commandType: QUERY_COMMAND });
-        const byteArray = commandToByteArray(null, commandOptions);
-        const {responseMsg}: types.ITransportResponse = await this.transport.send(byteArray, timeoutMS, true);
+
+        const commandOptions = { timeoutMS, commandType: QUERY_COMMAND };
+        mergeDeep(commandOptions, DEFAULT_COMMAND_OPTIONS);
+
+        const byteArray = commandToByteArray(null, commandOptions as ICommandOptions);
+        const { responseMsg }: types.ITransportResponse = await this.transport.send(byteArray, timeoutMS, true);
         const completeResponse: ICompleteResponse = bufferToCompleteResponse(responseMsg);
         return completeResponse;
     }
@@ -57,6 +60,7 @@ export class DeviceInterface {
         const byteArray = commandToByteArray(deviceCommand, commandOptions);
         this.queue.add(async () => {
             this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false);
+            // if(this.queueSize > 50) this.queue.pop()
         });
 
         // if (!commandOptions.waitForResponse) {
@@ -68,9 +72,10 @@ export class DeviceInterface {
     }
 
     protected handleReponse(commandOptions: ICommandOptions, deviceCommand: IDeviceCommand): Promise<ICompleteResponse> {
-        if (!this.cantCancel) this.clearRetryCommandTimeout();
 
-        let updatedResponse: ICompleteResponse;
+        if (!this.cantCancel) this.clearRetryCommandTimeout();
+        if (!commandOptions.waitForResponse) return;
+            let updatedResponse: ICompleteResponse;
         if (this.queue.getQueueLength() < 1 && commandOptions.remainingRetries > 0) {
             this.cantCancel = true;
 
@@ -110,7 +115,7 @@ export class DeviceInterface {
         let isEqual = false;
         let omitItems;
         if (commandOptions.commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
-        else if (deviceCommand.colorMask == white) omitItems = ["RGB"];
+        else if (deviceCommand.colorMask == WHITE) omitItems = ["RGB"];
         else omitItems = ["CCT"]
 
 

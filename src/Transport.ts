@@ -4,7 +4,7 @@ import { bufferFromByteArray } from './utils/miscUtils';
 // import net from './tests/mock-net';
 
 const PORT = 5577;
-const SOCKET_TIMEOUT = 2000;
+const SOCKET_TIMEOUT = 100;
 export class Transport {
   host: any;
   socket: net.Socket;
@@ -35,10 +35,11 @@ export class Transport {
     }
 
     // clearTimeout(this.waitTimeout);
-
+    // this.socket.end()
+    // this.socket = null;
     // setTimeout(() => {
     //   if (this.socket) {
-  
+
     //     this.socket.destroy();
     //     this.socket = null;
     //   }
@@ -55,8 +56,9 @@ export class Transport {
     this.write(byteArray);
 
     let transportResponse: ITransportResponse = { responseCode: 2, responseMsg: Buffer.from("0") };
-
+    console.log(expectResponse)
     if (expectResponse) {
+      console.log("WAITING RESPONSE")
       const responseMsg = await this.read(timeoutMS);
       Object.assign(transportResponse, { responseMsg, responseCode: 1 })
     }
@@ -71,6 +73,7 @@ export class Transport {
 
   read(timeoutMS = 200) {
     const data = this.wait(this.socket, 'data', timeoutMS);
+    this.socket.removeListener('data', () => { })
     return data;
   }
 
@@ -86,7 +89,6 @@ export class Transport {
       // listen for the first event, then stop listening (once)
       emitter.once(eventName, (args: any) => {
         clearTimeout(this.waitTimeout); // stop the timeout from executing
-
         if (!complete) {
           complete = true; // mark the job as done
           resolve(args);

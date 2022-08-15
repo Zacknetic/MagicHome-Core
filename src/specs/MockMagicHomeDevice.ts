@@ -2,9 +2,9 @@ import { IMockCommandSettings, IMockDeviceSettings, IMockLEDState } from "../typ
 import * as types from '../types';
 
 const {
-    DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
+    DEVICE_COMMAND_BYTES: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
     COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND },
-    defaultCommand
+    DEFAULT_COMMAND: defaultCommand
 } = types;
 
 const needsPowerCommand = false;

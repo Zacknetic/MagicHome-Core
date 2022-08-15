@@ -1,8 +1,8 @@
 import * as types from '../types';
-import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, defaultCompleteResponse } from '../types'
+import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, DEFAULT_COMPLETE_RESPONSE } from '../types'
 
 const {
-    DEVICE_COMMANDS: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
+    DEVICE_COMMAND_BYTES: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
     COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND }
 } = types;
 
@@ -46,7 +46,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             //construct animation frame byte array
             break;
         default:
-            const completeResponse: ICompleteResponse = Object.assign({}, defaultCompleteResponse, { esponseCode: -1, deviceState: null, deviceCommand });
+            const completeResponse: ICompleteResponse = Object.assign({}, DEFAULT_COMPLETE_RESPONSE, { responseCode: -1, deviceState: null, deviceCommand });
             throw completeResponse;
     }
 
