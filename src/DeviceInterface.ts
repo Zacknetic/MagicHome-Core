@@ -33,7 +33,7 @@ export class DeviceInterface {
     cantCancel: boolean = false;
     constructor(transport: Transport) {
         this.transport = transport;
-        this.queue = new Queue(1, 50); // 1 concurrent, infinite size
+        this.queue = new Queue(1, Infinity); // 1 concurrent, infinite size
 
     }
 
@@ -75,7 +75,7 @@ export class DeviceInterface {
 
         if (!this.cantCancel) this.clearRetryCommandTimeout();
         if (!commandOptions.waitForResponse) return;
-            let updatedResponse: ICompleteResponse;
+        let updatedResponse: ICompleteResponse;
         if (this.queue.getQueueLength() < 1 && commandOptions.remainingRetries > 0) {
             this.cantCancel = true;
 

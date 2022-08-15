@@ -1,5 +1,5 @@
 import * as types from '../types';
-import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, DEFAULT_COMPLETE_RESPONSE } from '../types'
+import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, DEFAULT_COMPLETE_RESPONSE, COLOR_MASKS } from '../types'
 
 const {
     DEVICE_COMMAND_BYTES: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
@@ -23,12 +23,14 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
         case COLOR_COMMAND:
             //test for bad or insufficient data?
             //construct the color command byte array
-            const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite } } = deviceCommand;
+            let { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
+
+            if (!colorMask) colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
 
             if (commandOptions.isEightByteProtocol) {
-                commandByteArray = [0x31, red, green, blue, warmWhite, deviceCommand.colorMask, 0x0F]; //8th byte checksum calculated later in send()
+                commandByteArray = [0x31, red, green, blue, warmWhite, colorMask, 0x0F]; //8th byte checksum calculated later in send()
             } else {
-                commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, deviceCommand.colorMask, 0x0F]; //9 byte
+                commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, colorMask, 0x0F]; //9 byte
             }
             break;
 

@@ -41,7 +41,7 @@ export interface IDeviceCommand {
     readonly isOn: boolean;
     readonly RGB: IColorRGB;
     readonly CCT: IColorCCT;
-    readonly colorMask: number;
+    readonly colorMask?: number;
 }
 
 export interface IIncompleteCommand {
@@ -154,10 +154,9 @@ export const DEVICE_STATE_DEFAULTS = {
 }
 
 export const DEFAULT_COMMAND: IDeviceCommand = {
-    isOn: false,
+    isOn: true,
     RGB: mergeDeep({}, DEFAULT_RGB),
-    CCT: mergeDeep({}, DEFAULT_RGB),
-    colorMask: COLOR_MASKS.COLOR,
+    CCT: mergeDeep({}, DEFAULT_CCT),
 }
 
 export const DEFAULT_DEVICE_METADATA: IDeviceMetaData = {
