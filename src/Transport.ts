@@ -1,15 +1,16 @@
 import net from 'net';
 import { ITransportResponse } from './types';
-import { bufferFromByteArray } from './utils/miscUtils';
+import { bufferFromByteArray, mergeDeep, overwriteDeep } from './utils/miscUtils';
 // import net from './tests/mock-net';
 
 const PORT = 5577;
-const SOCKET_TIMEOUT = 100;
+const SOCKET_TIMEOUT = 2000;
 export class Transport {
   host: any;
   socket: net.Socket;
   queue: any;
   waitTimeout: any;
+  socketTimeout: NodeJS.Timeout;
   /**
    * @param {string} host - hostname
    * @param {number} timeout - connection timeout (in seconds)
@@ -19,7 +20,8 @@ export class Transport {
     this.socket = null;
   }
 
-  connect(_timeout = 200) {
+  async connect(_timeout = 200) {
+
     const options = {
       host: this.host,
       port: PORT,
@@ -31,19 +33,18 @@ export class Transport {
     if (!this.socket) {
       this.socket = net.connect(options);
       this.socket.setMaxListeners(100)
-      this.wait(this.socket, 'connect', SOCKET_TIMEOUT);
+      await this.wait(this.socket, 'connect', SOCKET_TIMEOUT);
     }
+    clearTimeout(this.socketTimeout);
 
-    // clearTimeout(this.waitTimeout);
-    // this.socket.end()
-    // this.socket = null;
-    // setTimeout(() => {
-    //   if (this.socket) {
 
-    //     this.socket.destroy();
-    //     this.socket = null;
-    //   }
-    // }, SOCKET_TIMEOUT)
+    this.socketTimeout = setTimeout(() => {
+      if (this.socket) {
+        this.socket.end();
+        this.socket.destroy();
+        this.socket = null;
+      }
+    }, SOCKET_TIMEOUT)
 
 
     return result;
@@ -52,13 +53,14 @@ export class Transport {
   async send(byteArray: number[], timeoutMS, expectResponse: boolean = false): Promise<ITransportResponse> {
 
 
-    this.connect();
+    await this.connect().catch(e => {});
     this.write(byteArray);
 
-    let transportResponse: ITransportResponse = { responseCode: 2, responseMsg: Buffer.from("0") };
+    let transportResponse: ITransportResponse = { responseCode: 2, responseMsg: null };
+
     if (expectResponse) {
       const responseMsg = await this.read(timeoutMS);
-      Object.assign(transportResponse, { responseMsg, responseCode: 1 })
+      transportResponse = mergeDeep({ responseMsg, responseCode: 1 }, transportResponse)
     }
 
     return transportResponse;
@@ -69,24 +71,26 @@ export class Transport {
     this.socket.write(payload, 'binary');
   }
 
-  read(timeoutMS = 200) {
-    const data = this.wait(this.socket, 'data', timeoutMS);
+  async read(timeoutMS = 200) {
+    const data = await this.wait(this.socket, 'data', timeoutMS);
     this.socket.removeListener('data', () => { })
     return data;
   }
 
   wait(emitter: net.Socket, eventName: string, timeout: number) {
 
+    let waitTimeout;
     return new Promise((resolve, reject) => {
       let complete = false;
-      this.waitTimeout = setTimeout(() => {
+
+      waitTimeout = setTimeout(() => {
         complete = true; // mark the job as done
-        reject(-1);
+        reject(`timed out while awaiting: ${eventName}`,);
       }, timeout);
 
       // listen for the first event, then stop listening (once)
       emitter.once(eventName, (args: any) => {
-        clearTimeout(this.waitTimeout); // stop the timeout from executing
+        clearTimeout(waitTimeout); // stop the timeout from executing
         if (!complete) {
           complete = true; // mark the job as done
           resolve(args);
@@ -95,8 +99,7 @@ export class Transport {
 
       // handle the first error and reject the promise
       emitter.on('error', (e) => {
-        clearTimeout(this.waitTimeout); // stop the timeout from executing
-
+        clearTimeout(waitTimeout); // stop the timeout from executing
         if (!complete) {
           complete = true;
           reject(e);
@@ -105,6 +108,8 @@ export class Transport {
 
 
     });
+
   }
+
 
 }

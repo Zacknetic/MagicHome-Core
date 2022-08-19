@@ -65,27 +65,40 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
  * @param timeout number
  * @returns completeDevice[]
  */
-export async function completeDevices(protoDevices: IProtoDevice[], timeout = 500): Promise<ICompleteDevice[]> {
+
+export async function completeDevices(protoDevices: IProtoDevice[], timeout = 500, retries = 3): Promise<ICompleteDevice[]> {
   if (protoDevices.length < 1) return;
-  const completeDevices: ICompleteDevice[] = [];
-  for (const protoDevice of protoDevices) {
-    const transport = new Transport(protoDevice.ipAddress);
-    const deviceInterface = new DeviceInterface(transport);
-    const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout);
+  const deviceResponses: Promise<ICompleteDevice>[] = []
+  const completedDevices: ICompleteDevice[] = [];
+  const retryProtoDevices: IProtoDevice[] = [];
 
-    if (completeResponse.deviceMetaData) {
+  protoDevices.forEach((protoDevice) => {
+    deviceResponses.push(completeDevice(protoDevice, timeout));
+  })
 
-      const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() }
-      const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo }
-      completeDevices.push(completeDevice);
-    }
-  };
+  await Promise.allSettled(deviceResponses).then(results => {
+    results.forEach(result => {
+      if (result.status === 'fulfilled') completedDevices.push(result.value);
+      else retryProtoDevices.push(result.reason.protoDevice)
+    });
+  });
+  if (retryProtoDevices.length > 0 && retries > 0) completedDevices.push(... await completeDevices(retryProtoDevices, timeout, retries - 1));
 
-  return completeDevices;
+  return completedDevices;
+}
+
+async function completeDevice(protoDevice: IProtoDevice, timeout): Promise<ICompleteDevice> {
+  const transport = new Transport(protoDevice.ipAddress);
+  const deviceInterface = new DeviceInterface(transport);
+  const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout).catch(() => { throw { protoDevice, response: 'invalidResponse' } })
+
+  const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() }
+  const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo }
+
+  return completeDevice;
 }
 
 /**
- * 
  * @param protoDevices IProtoDevice[]
  * @param timeout number
  * @returns completeDevice[]
@@ -99,9 +112,8 @@ export function completeCustomDevices(completeDevicesInfo: ICompleteDeviceInfo[]
     const transport = new Transport(ipAddress);
     const deviceInterface = new DeviceInterface(transport);
 
-    const completeResponse = {};
-    mergeDeep(completeResponse, DEFAULT_COMPLETE_RESPONSE);
-    const completeDevice: ICompleteDevice = { completeDeviceInfo, deviceInterface, completeResponse: completeResponse as ICompleteResponse }
+    const completeResponse: ICompleteResponse = mergeDeep({}, DEFAULT_COMPLETE_RESPONSE);
+    const completeDevice: ICompleteDevice = { completeDeviceInfo, deviceInterface, completeResponse }
     completeDevices.push(completeDevice);
   };
 

@@ -1,14 +1,10 @@
-// const SLOW_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 20, bufferMS: 0, timeoutMS: 2000 };
-// const MEDIUM_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 100 };
-// const FAST_COMMAND_OPTIONS: ICommandOptions = { maxRetries: 0, bufferMS: 0, timeoutMS: 20 };
-
-import { ICommandOptions, IDeviceCommand, ICompleteResponse, DEFAULT_COMMAND_OPTIONS } from './types';
+import { ICommandOptions, IDeviceCommand, ICompleteResponse, DEFAULT_COMMAND_OPTIONS, ITransportResponse, DEFAULT_COMPLETE_RESPONSE, DEFAULT_COMMAND } from './types';
 import * as types from './types'
 import { Transport } from './Transport';
 import { commandToByteArray } from './utils/coreUtils';
 import Queue from 'promise-queue';
 
-import { bufferToDeviceResponse as bufferToCompleteResponse, deepEqual, mergeDeep, sleepTimeout } from './utils/miscUtils';
+import { bufferToDeviceResponse as bufferToCompleteResponse, deepEqual, mergeDeep, overwriteDeep, sleepTimeout } from './utils/miscUtils';
 
 const RETRY_WAIT_MS = 1000;
 const RETRY_QUERY_MS = 1000;
@@ -31,10 +27,10 @@ export class DeviceInterface {
 
     protected transport: Transport;
     cantCancel: boolean = false;
+
     constructor(transport: Transport) {
         this.transport = transport;
         this.queue = new Queue(1, Infinity); // 1 concurrent, infinite size
-
     }
 
 
@@ -45,23 +41,22 @@ export class DeviceInterface {
      * @returns Promise<ICompleteResponse>
      */
 
-    public async queryState(timeoutMS: number): Promise<ICompleteResponse> {
+    public async queryState(timeoutMS = 100): Promise<ICompleteResponse> {
 
-        const commandOptions = { timeoutMS, commandType: QUERY_COMMAND };
-        mergeDeep(commandOptions, DEFAULT_COMMAND_OPTIONS);
+        const commandOptions: ICommandOptions = mergeDeep({ timeoutMS, commandType: QUERY_COMMAND }, DEFAULT_COMMAND_OPTIONS);
 
-        const byteArray = commandToByteArray(null, commandOptions as ICommandOptions);
-        const { responseMsg }: types.ITransportResponse = await this.transport.send(byteArray, timeoutMS, true);
+        const byteArray = commandToByteArray(null, commandOptions);
+        const { responseMsg }: ITransportResponse = await this.transport.send(byteArray, timeoutMS, true);
         const completeResponse: ICompleteResponse = bufferToCompleteResponse(responseMsg);
         return completeResponse;
     }
 
-    public async sendCommand(deviceCommand: IDeviceCommand, commandOptions?: ICommandOptions) {
+    public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
+        mergeDeep(commandOptions, DEFAULT_COMMAND_OPTIONS)
+        mergeDeep(deviceCommand, DEFAULT_COMMAND)
+        console.log(commandOptions)
         const byteArray = commandToByteArray(deviceCommand, commandOptions);
-        this.queue.add(async () => {
-            this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false);
-            // if(this.queueSize > 50) this.queue.pop()
-        });
+        this.queue.add(() => { this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false); });
 
         // if (!commandOptions.waitForResponse) {
         //     return true;
@@ -74,26 +69,30 @@ export class DeviceInterface {
     protected handleReponse(commandOptions: ICommandOptions, deviceCommand: IDeviceCommand): Promise<ICompleteResponse> {
 
         if (!this.cantCancel) this.clearRetryCommandTimeout();
-        if (!commandOptions.waitForResponse) return;
+        if (!commandOptions.waitForResponse) return new Promise(resolve => resolve(DEFAULT_COMPLETE_RESPONSE));
+
         let updatedResponse: ICompleteResponse;
         if (this.queue.getQueueLength() < 1 && commandOptions.remainingRetries > 0) {
-            this.cantCancel = true;
+
 
             return new Promise(async (resolve, reject) => {
+                console.log("INSIDE CHECKING FUNCTION PROMISE");
                 this.retryCommandTimeout = setTimeout(async () => {
-
-                    updatedResponse = await this.queryState(1000);
-                    let deviceState, deviceMetaData, isValidState;
+                    // this.cantCancel = true;
+                    updatedResponse = await this.queryState(1000).catch(e => {
+                        console.log("NO UPDATED RESPONSE", e);
+                        throw ('NO UPDATED RESPONSE')
+                    })
+                    let isValidState;
                     if (updatedResponse) {
-                        deviceState = updatedResponse.deviceState;
-                        deviceMetaData = updatedResponse.deviceMetaData;
+
                         isValidState = this.isValidState(deviceCommand, updatedResponse, commandOptions)
                     }
                     if (!updatedResponse || updatedResponse == undefined || !isValidState) {
                         commandOptions.remainingRetries--;
                         const byteArray = commandToByteArray(deviceCommand, commandOptions);
                         this.transport.send(byteArray, commandOptions.timeoutMS ?? 200, false);
-                        this.handleReponse(commandOptions, deviceCommand).then(ret => { console.log('WHOOPS') });
+                        this.handleReponse(commandOptions, deviceCommand);
                     } else {
                         this.cantCancel = false
                         resolve(updatedResponse)
@@ -110,8 +109,9 @@ export class DeviceInterface {
         }
     }
 
-    protected isValidState(deviceCommand: IDeviceCommand, deviceResponse: ICompleteResponse, commandOptions?: ICommandOptions): boolean {
-        // console.log(deviceCommand, deviceResponse.deviceState)
+    protected isValidState(deviceCommand: IDeviceCommand, deviceResponse: ICompleteResponse, commandOptions: ICommandOptions): boolean {
+        console.log("COMMAND: ", deviceCommand, "\nSTATE: ", deviceResponse.deviceState)
+        console.log(deviceCommand.colorMask, " ", commandOptions.commandType)
         let isEqual = false;
         let omitItems;
         if (commandOptions.commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];

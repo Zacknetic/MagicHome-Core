@@ -30,6 +30,7 @@ export interface ICompleteDevice {
 export interface ICommandOptions {
     readonly timeoutMS?: number;
     readonly bufferMS?: number;
+    readonly colorAssist?: boolean
     readonly commandType: string;
     readonly isEightByteProtocol?: boolean;
     readonly waitForResponse: boolean;
@@ -38,10 +39,10 @@ export interface ICommandOptions {
 }
 
 export interface IDeviceCommand {
-    readonly isOn: boolean;
-    readonly RGB: IColorRGB;
-    readonly CCT: IColorCCT;
-    readonly colorMask?: number;
+    isOn: boolean;
+    RGB: IColorRGB;
+    CCT: IColorCCT;
+    colorMask?: number;
 }
 
 export interface IIncompleteCommand {
@@ -52,14 +53,14 @@ export interface IIncompleteCommand {
 }
 
 export interface IColorRGB {
-    readonly red: number;
-    readonly green: number;
-    readonly blue: number;
+    red: number;
+    green: number;
+    blue: number;
 }
 
 export interface IColorCCT {
-    readonly warmWhite: number;
-    readonly coldWhite: number;
+    warmWhite: number;
+    coldWhite: number;
 }
 
 export interface IDeviceState {
@@ -160,15 +161,15 @@ export const DEFAULT_COMMAND: IDeviceCommand = {
 }
 
 export const DEFAULT_DEVICE_METADATA: IDeviceMetaData = {
-    controllerFirmwareVersion: -1,
-    controllerHardwareVersion: -1,
-    rawData: Buffer.from("0"),
+    controllerFirmwareVersion: null,
+    controllerHardwareVersion: null,
+    rawData: null,
 }
 
 export const DEFAULT_COMPLETE_RESPONSE: ICompleteResponse = {
     responseCode: 0,
-    deviceState: mergeDeep({}, DEVICE_STATE_DEFAULTS),
-    deviceMetaData: mergeDeep({}, DEFAULT_DEVICE_METADATA)
+    deviceState: null,
+    deviceMetaData: null
 }
 
 export const DEFAULT_COMMAND_OPTIONS = {
