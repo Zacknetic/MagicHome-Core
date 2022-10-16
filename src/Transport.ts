@@ -1,16 +1,18 @@
 import net from 'net';
-import { ITransportResponse } from './types';
+import { DEVICE_COMMAND_BYTES, ICompleteResponse, ITransportResponse } from './types';
 import { bufferFromByteArray, mergeDeep, overwriteDeep } from './utils/miscUtils';
 // import net from './tests/mock-net';
 
 const PORT = 5577;
-const SOCKET_TIMEOUT = 2000;
+const SOCKET_TIMEOUT_MS = 2000;
+const SOCKET_CONNECTION_RETRIES = 2;
+
 export class Transport {
-  host: any;
-  socket: net.Socket;
-  queue: any;
-  waitTimeout: any;
-  socketTimeout: NodeJS.Timeout;
+  protected host: any;
+  protected socket: net.Socket;
+  protected socketTimeout: NodeJS.Timeout;
+
+
   /**
    * @param {string} host - hostname
    * @param {number} timeout - connection timeout (in seconds)
@@ -20,72 +22,96 @@ export class Transport {
     this.socket = null;
   }
 
-  async connect(_timeout = 200) {
+  /**
+   * 
+   * @param byteArray 
+   * @param timeoutMS 
+   * @param waitForResponse 
+   * @returns 
+   */
 
-    const options = {
-      host: this.host,
-      port: PORT,
-      timeout: SOCKET_TIMEOUT,
-    };
-
-    let result;
-
-    if (!this.socket) {
-      this.socket = net.connect(options);
-      this.socket.setMaxListeners(100)
-      await this.wait(this.socket, 'connect', SOCKET_TIMEOUT);
-    }
-    clearTimeout(this.socketTimeout);
-
-
-    this.socketTimeout = setTimeout(() => {
-      if (this.socket) {
-        this.socket.end();
-        this.socket.destroy();
-        this.socket = null;
-      }
-    }, SOCKET_TIMEOUT)
-
-
-    return result;
+  public async queryState(timeoutMS: number) {
+    const response = await this.sendWaitResponse(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE, timeoutMS).catch(e => {
+      // throw new Error(e);
+    });
+    return response;
   }
 
-  async send(byteArray: number[], timeoutMS, expectResponse: boolean = false): Promise<ITransportResponse> {
+  public async sendWaitResponse(byteArray: number[], timeoutMS: number) {
+
+    this.quickSend(byteArray);
+    const responseMsg: Buffer = await this.read(timeoutMS).catch(e => {
+      // throw new Error(e);
+
+    }) as Buffer;
+    if (responseMsg.length < 14) throw { responseMsg: 'response buffer length is less than 14', responseCode: -7, deviceState: null, deviceMetaData: null }
 
 
-    await this.connect().catch(e => {});
-    this.write(byteArray);
-
-    let transportResponse: ITransportResponse = { responseCode: 2, responseMsg: null };
-
-    if (expectResponse) {
-      const responseMsg = await this.read(timeoutMS);
-      transportResponse = mergeDeep({ responseMsg, responseCode: 1 }, transportResponse)
-    }
+    const transportResponse: ITransportResponse = { responseMsg, responseCode: 1 }
 
     return transportResponse;
   }
 
-  write(byteArray: number[]): void {
+  public async quickSend(byteArray: number[]): Promise<void> {
+
+    await this.connect();
+    this.write(byteArray);
+  }
+
+  private write(byteArray: number[]): void {
     const payload = bufferFromByteArray(byteArray);
     this.socket.write(payload, 'binary');
   }
 
-  async read(timeoutMS = 200) {
-    const data = await this.wait(this.socket, 'data', timeoutMS);
-    this.socket.removeListener('data', () => { })
-    return data;
+
+  private async read(timeoutMS = 200): Promise<Buffer> {
+    const data = await wait(this.socket, 'data', timeoutMS).catch(e => { 
+      // throw new Error(e) 
+    }
+      );
+    return data as Buffer;
   }
 
-  wait(emitter: net.Socket, eventName: string, timeout: number) {
+  private async connect(retries = SOCKET_CONNECTION_RETRIES) {
 
-    let waitTimeout;
-    return new Promise((resolve, reject) => {
+    this.resetSocketTimeout();
+    if (this.socket) return;
+    const options = {
+      host: this.host,
+      port: PORT,
+      timeout: SOCKET_TIMEOUT_MS,
+    };
+
+    this.socket = net.connect(options);
+    this.socket.setMaxListeners(100)
+    await wait(this.socket, 'connect', SOCKET_TIMEOUT_MS).catch((e) => {
+      if (retries > 0) return this.connect(retries - 1);
+      else {
+        const completeResponse: ICompleteResponse = { responseMsg: e, responseCode: -7, deviceState: null, deviceMetaData: null }
+        // throw new Error(e);
+      }
+    });;
+  }
+
+  resetSocketTimeout() {
+    clearTimeout(this.socketTimeout);
+    this.socketTimeout = setTimeout(() => {
+      this.socket.removeAllListeners();
+      this.socket.end();
+      this.socket.destroy();
+      this.socket = null;
+    }, SOCKET_TIMEOUT_MS);
+  }
+}
+
+async function wait(emitter: net.Socket, eventName: string, timeout: number) {
+  try {
+    return await new Promise((resolve, reject) => {
       let complete = false;
 
-      waitTimeout = setTimeout(() => {
+      const waitTimeout = setTimeout(() => {
         complete = true; // mark the job as done
-        reject(`timed out while awaiting: ${eventName}`,);
+        reject(`timed out while awaiting: ${eventName}. Timeout time was ${timeout}ms.`);
       }, timeout);
 
       // listen for the first event, then stop listening (once)
@@ -102,14 +128,12 @@ export class Transport {
         clearTimeout(waitTimeout); // stop the timeout from executing
         if (!complete) {
           complete = true;
-          reject(e);
+          reject(`Received error while awaiting: ${eventName}. Error: ${e}`);
         }
       });
 
-
     });
-
+  } catch (error) {
+    // throw Error(error);
   }
-
-
 }

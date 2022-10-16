@@ -83,7 +83,7 @@ export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
  */
 export function mergeDeep(target: any, ...sources) {
   if (!sources.length) return target;
-  if(!target) target = {};
+  if (!target) target = {};
   const source = sources.shift();
 
   if (isObject(target) && isObject(source)) {

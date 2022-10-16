@@ -26,7 +26,6 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
 
   socket.on('error', (err) => {
     socket.close();
-    console.log(err)
     return err;
   });
 
@@ -54,7 +53,7 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
 
   });
 
-  await sleepTimeout(timeout);
+  await sleepTimeout(timeout).catch(e => { throw 'sleep somehow failed' });
   socket.close();
   return protoDevicesList;
 }
@@ -82,7 +81,7 @@ export async function completeDevices(protoDevices: IProtoDevice[], timeout = 50
       else retryProtoDevices.push(result.reason.protoDevice)
     });
   });
-  if (retryProtoDevices.length > 0 && retries > 0) completedDevices.push(... await completeDevices(retryProtoDevices, timeout, retries - 1));
+  if (retryProtoDevices.length > 0 && retries > 0) completedDevices.push(... await completeDevices(retryProtoDevices, timeout, retries - 1).catch(e => { throw e }));
 
   return completedDevices;
 }

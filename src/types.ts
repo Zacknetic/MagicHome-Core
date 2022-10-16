@@ -28,13 +28,13 @@ export interface ICompleteDevice {
  * @field remainingRetries: number
  */
 export interface ICommandOptions {
-    readonly timeoutMS?: number;
+    readonly timeoutMS: number;
     readonly bufferMS?: number;
-    readonly colorAssist?: boolean
+    colorAssist?: boolean
     readonly commandType: string;
     readonly isEightByteProtocol?: boolean;
     readonly waitForResponse: boolean;
-    maxRetries?: number;
+    maxRetries: number;
     remainingRetries?: number;
 }
 
@@ -101,6 +101,7 @@ export interface IQueueOptions {
 /*******************************CONSTANTS****************** */
 
 export const EVENT_NUMBER = new Map([
+    [-9, 'incorrect buffer length'],
     [-8, 'device unresponsive'],
     [-7, 'socket reported error'],
     [-6, 'command/query timed out'],
