@@ -131,3 +131,11 @@ export function isObject(item) {
 export function sleepTimeout(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+export class ValidationError extends Error {
+  constructor(message, public responseCode: number) {
+    super(message); // (1)
+    this.name = "ValidationError"; // (2)
+    this.responseCode = responseCode;
+  }
+}

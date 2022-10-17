@@ -1,5 +1,5 @@
 // import { Network } from '../Network'
-// import { ICommandOptions, ICommandResponse, IDeviceCommand } from '../types';
+// import { ICommandOptions, IDeviceCommand } from '../types';
 // import * as types from '../types'
 
 

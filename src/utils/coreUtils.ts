@@ -1,7 +1,8 @@
 import * as types from '../types';
 import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, DEFAULT_COMPLETE_RESPONSE, COLOR_MASKS } from '../types'
-
+import { deepEqual } from './miscUtils';
 const {
+    COLOR_MASKS: { WHITE, COLOR, BOTH },
     DEVICE_COMMAND_BYTES: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
     COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND }
 } = types;
@@ -26,7 +27,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             let { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
 
             if (!colorMask) colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
-            
+
             if (commandOptions.isEightByteProtocol) {
                 commandByteArray = [0x31, red, green, blue, warmWhite, colorMask, 0x0F]; //8th byte checksum calculated later in send()
             } else {
@@ -53,4 +54,24 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
     }
 
     return commandByteArray;
+}
+
+
+export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: ICompleteResponse, commandType: string): boolean {
+    try {
+        const { deviceState } = deviceResponse;
+        // console.log("COMMAND: ", deviceCommand, "\nSTATE: ", deviceState)
+        // console.log(deviceCommand.colorMask, " ", commandOptions.commandType)
+        let isEqual = false;
+        let omitItems;
+        if (commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
+        else if (deviceCommand.colorMask == WHITE) omitItems = ["RGB"];
+        else omitItems = ["CCT"]
+
+        isEqual = deepEqual(deviceCommand, deviceState, ['colorMask', ...omitItems]);
+
+        return isEqual;
+    } catch (error) {
+        // throw Error(error);
+    }
 }
