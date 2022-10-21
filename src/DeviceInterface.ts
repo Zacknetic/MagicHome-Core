@@ -37,7 +37,7 @@ export class DeviceInterface {
 
     public async queryState(timeoutMS = 100): Promise<ICompleteResponse> {
 
-        const responseMsg: Buffer = await this.transport.queryState(timeoutMS);
+        const responseMsg: Buffer = await this.transport.queryState(timeoutMS).then(res => res).catch(e => { throw e });
         // if (typeof responseMsg == 'undefined') throw ('updated Response undefiend')
 
         const completeResponse: ICompleteResponse = bufferToCompleteResponse(responseMsg);
@@ -51,16 +51,16 @@ export class DeviceInterface {
      * @param commandOptions 
      * @returns 
      */
-    public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse | void> {
+    public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse> {
 
         // mergeDeep(commandOptions, DEFAULT_COMMAND_OPTIONS)
         // mergeDeep(deviceCommand, DEFAULT_COMMAND)
         const byteArray = commandToByteArray(deviceCommand, commandOptions);
         // await this.queue.add(
         //     async () => {
-        await this.transport.quickSend(byteArray).catch(e => { throw e });
+        await this.transport.quickSend(byteArray).then(res => res).catch(e => { throw e });
         // });
-        return await this.handleReponse(deviceCommand, commandOptions).catch(e => { throw e });
+        return await this.handleReponse(deviceCommand, commandOptions).then(res => res).catch(e => { throw e });
 
     }
 

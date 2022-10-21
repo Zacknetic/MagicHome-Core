@@ -40,14 +40,14 @@ export class Transport {
     this.quickSend(byteArray)
       .catch(e => { throw e });
     const responseMsg: Buffer = await this.read(timeoutMS)
-      .catch((e) => { throw e });
+      .then(res => res).catch(e => { throw e });
     if (responseMsg.length < 14) throw new ValidationError("response buffer length is less than 14", -9);
     return responseMsg;
   }
 
   public async quickSend(byteArray: number[]): Promise<void> {
 
-    await this.connect().catch(e => { throw e });
+    await this.connect().then(res => res).catch(e => { throw e });
     this.write(byteArray);
   }
 

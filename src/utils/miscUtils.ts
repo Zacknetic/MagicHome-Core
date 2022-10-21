@@ -137,5 +137,6 @@ export class ValidationError extends Error {
     super(message); // (1)
     this.name = "ValidationError"; // (2)
     this.responseCode = responseCode;
+    this.stack = (new Error()).stack;
   }
 }
