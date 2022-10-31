@@ -35,6 +35,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             }
             break;
 
+            Date.now()
         case QUERY_COMMAND:
             // if (this.queueSize > 0) {
             //     const transportResponse: ITransportResponse = { responseCode: 0, deviceState: null, deviceCommand }

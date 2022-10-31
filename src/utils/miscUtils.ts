@@ -1,7 +1,8 @@
 import { ICompleteResponse } from "../types";
 
 export function bufferToDeviceResponse(data: Buffer): ICompleteResponse {
-  if (!Buffer.isBuffer(data) || data.length < 14) return null;
+  if (!Buffer.isBuffer(data) || data.length < 14) throw new Error('test');
+  ;
 
   const completeResponse: ICompleteResponse = {
 

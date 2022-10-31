@@ -64,9 +64,9 @@ export interface IColorCCT {
 }
 
 export interface IDeviceState {
-    readonly isOn: boolean;
-    readonly RGB: IColorRGB;
-    readonly CCT: IColorCCT;
+    isOn: boolean;
+    RGB: IColorRGB;
+    CCT: IColorCCT;
 }
 
 
@@ -182,6 +182,21 @@ export const DEFAULT_COMMAND_OPTIONS = {
     remainingRetries: 5,
 }
 
+/*******************************Helper Types****************** */
+// type Enumerate<N extends number, Acc extends number[] = []> = Acc['length'] extends N
+//     ? Acc[number]
+//     : Enumerate<N, [...Acc, Acc['length']]>
+
+// type PrependNextNum<A extends Array<unknown>> = A['length'] extends infer T ? ((t: T, ...a: A) => void) extends ((...x: infer X) => void) ? X : never : never;
+
+// type EnumerateInternal<A extends Array<unknown>, N extends number> = { 0: A, 1: EnumerateInternal<PrependNextNum<A>, N> }[N extends A['length'] ? 0 : 1];
+
+// export type Enumerate<N extends number> = EnumerateInternal<[], N> extends (infer E)[] ? E : never;
+
+// // export type Range<FROM extends number, TO extends number> = Exclude<Enumerate<TO>, Enumerate<FROM>>;
+
+
+// export type IntRange<F extends number, T extends number> = Exclude<Enumerate<T>, Enumerate<F>>;
 
 
 /*******************************MOCK SETTINGS****************** */

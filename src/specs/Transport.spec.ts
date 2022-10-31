@@ -97,10 +97,10 @@ describe('Send Command Test', () => {
         // await sleep(500)
 
         asyncMethod(blue, false, 1000).then((returnValue) => {
-            console.log(returnValue)
+            // console.log(returnValue)
             // setImmediate(done)
         }).catch(err => {
-            console.log( err)
+            // console.log( err)
         })
 
         // await sleep(500)

@@ -31,7 +31,7 @@ export class Transport {
    */
 
   public queryState(timeoutMS: number) {
-    const response = this.sendWaitResponse(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE, timeoutMS);
+    const response = this.sendWaitResponse(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE, timeoutMS).then(res => res).catch(e => { throw e });
     return response;
   }
 
@@ -99,8 +99,8 @@ export class Transport {
 }
 
 async function wait(emitter: net.Socket, eventName: string, timeout: number) {
-  return await new Promise((resolve, reject) => {
 
+  return await new Promise((resolve, reject) => {
     let complete = false;
     const waitTimeout = setTimeout(() => {
       complete = true; // mark the job as done
@@ -125,10 +125,8 @@ async function wait(emitter: net.Socket, eventName: string, timeout: number) {
       }
     });
 
-  })
-
-    .catch(e => {
-      throw e;
-    });
+  }).catch(e => {
+    throw e;
+  });
 
 }
