@@ -35,7 +35,6 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             }
             break;
 
-            Date.now()
         case QUERY_COMMAND:
             // if (this.queueSize > 0) {
             //     const transportResponse: ITransportResponse = { responseCode: 0, deviceState: null, deviceCommand }
@@ -57,22 +56,12 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
     return commandByteArray;
 }
 
-
 export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: ICompleteResponse, commandType: string): boolean {
-    try {
-        const { deviceState } = deviceResponse;
-        // console.log("COMMAND: ", deviceCommand, "\nSTATE: ", deviceState)
-        // console.log(deviceCommand.colorMask, " ", commandOptions.commandType)
-        let isEqual = false;
-        let omitItems;
-        if (commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
-        else if (deviceCommand.colorMask == WHITE) omitItems = ["RGB"];
-        else omitItems = ["CCT"]
-
-        isEqual = deepEqual(deviceCommand, deviceState, ['colorMask', ...omitItems]);
-
-        return isEqual;
-    } catch (error) {
-        // throw Error(error);
-    }
+    const { deviceState } = deviceResponse;
+    let omitItems;
+    if (commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
+    else if (deviceCommand.colorMask == WHITE) omitItems = ["RGB"];
+    else omitItems = ["CCT"]
+    const isEqual = deepEqual(deviceCommand, deviceState, ['colorMask', ...omitItems]);
+    return isEqual;
 }

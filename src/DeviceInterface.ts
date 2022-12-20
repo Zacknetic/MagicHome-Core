@@ -7,7 +7,6 @@ import Queue from 'promise-queue';
 import { bufferToDeviceResponse as bufferToCompleteResponse, deepEqual, mergeDeep, overwriteDeep, sleepTimeout, ValidationError } from './utils/miscUtils';
 
 const RETRY_WAIT_MS = 2000;
-const RESET_LATEST_POWER_COMMAND_MS = 2000;
 
 
 export class DeviceInterface {
@@ -21,11 +20,16 @@ export class DeviceInterface {
     protected latestPromiseReject;
     protected transport: Transport;
 
+    protected commandQueue: Array<{ deviceCommand: IDeviceCommand, commandOptions: ICommandOptions }>;
+    private processingCommand: boolean;
+    private retryCount: number;
 
     constructor(transport: Transport) {
         this.transport = transport;
-        this.queue = new Queue(1, Infinity); // 1 concurrent, infinite size
         this.latestPromiseReject = null;
+        this.commandQueue = [];
+        this.processingCommand = false;
+        this.retryCount = 0;
 
     }
 
@@ -52,90 +56,71 @@ export class DeviceInterface {
      * @returns 
      */
     public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse> {
-
-        // mergeDeep(commandOptions, DEFAULT_COMMAND_OPTIONS)
-        // mergeDeep(deviceCommand, DEFAULT_COMMAND)
-        const byteArray = commandToByteArray(deviceCommand, commandOptions);
-        // await this.queue.add(
-        //     async () => {
-        await this.transport.quickSend(byteArray).then(res => res).catch(e => { throw e });
-        // });
-        return await this.handleReponse(deviceCommand, commandOptions).then(res => res).catch(e => { throw e });
-
+        this.commandQueue.push({ deviceCommand, commandOptions });
+        if (!this.processingCommand) {
+            this.processingCommand = true;
+            let result: ICompleteResponse;
+            while (this.commandQueue.length > 0) {
+                const {deviceCommand: _deviceCommand, commandOptions: _commandOptions} = this.commandQueue.shift();
+                result = await this.processCommand(_deviceCommand, _commandOptions);
+            }
+            this.processingCommand = false;
+            return result;
+        } else {
+            return null;
+        }
     }
 
-    protected handleReponse(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse> {
-        this.clearRetryCommandTimeout();
 
-        //TODO, create default
-        return new Promise<ICompleteResponse>((resolve, reject) => {
-            if (this.queue.getQueueLength() > 0) {
-                reject(new ValidationError({ responseMsg: "queue not empty", commandOptions }, 0));
-                return;
-            }
-            else if (!commandOptions.waitForResponse) {
-                reject(new ValidationError({ responseMsg: "query not requested", commandOptions }, 0));
-                return
-            }
-            this.latestPromiseReject = { reject, commandOptions };
+    private async processCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse> {
+        // retry the final command if necessary
+        if (this.commandQueue.length === 0) {
+            return await this.retryCommand(deviceCommand, commandOptions);
+        } else {
+            await this.sendCommandToTransport(deviceCommand, commandOptions);
+            return null;
+        }
+    }
 
-            this.retryCommandTimeout = setTimeout(async () => {
+    private async retryCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse> {
+        try {
+            let state: ICompleteResponse = null;
+            await this.sendCommandToTransport(deviceCommand, commandOptions);
+            return new Promise((resolve, reject) => {
+                this.retryCommandTimeout = setTimeout(async () => {
+                    let isValidState = false;
+                    let retries = commandOptions.maxRetries;
 
-                if (!commandOptions.remainingRetries) commandOptions.remainingRetries = commandOptions.maxRetries;
-                while (this.queue.getQueueLength() < 1 && commandOptions.remainingRetries > 0) {
-                    const updatedResponse: ICompleteResponse | void = await this.queryState(500).catch(e => {
-                        reject(new ValidationError({ responseMsg: "query not requested", commandOptions }, 0));
-                        return;
-                    });
-                    if (typeof updatedResponse == 'undefined') {
-                        reject(new ValidationError({ responseMsg: "no response", commandOptions }, -1));
-                        return;
+                    while (!isValidState) {
+                        if (retries <= 0) {
+                            clearTimeout(this.retryCommandTimeout);
+                            reject(new Error('Failed to update light after 5 attempts'));
+                            return;
+                        }
+                        try {
+                            await this.sendCommandToTransport(deviceCommand, commandOptions);
+                            state = await this.queryState(500);
+                            isValidState = await isStateEqual(deviceCommand, state, commandOptions.commandType);
+                        } catch (e) {
+                            clearTimeout(this.retryCommandTimeout);
+                            reject(e);
+                            return;
+                        }
+                        retries--;
                     }
-
-                    let isValidState = isStateEqual(deviceCommand, updatedResponse, commandOptions.commandType);
-
-                    if (!isValidState) {
-                        // this.transport.quickSend(types.DEVICE_COMMAND_BYTES.COMMAND_POWER_OFF)
-                        commandOptions.remainingRetries--;
-                        const byteArray = commandToByteArray(deviceCommand, commandOptions);
-                        this.transport.quickSend(byteArray);
-
-                    } else {
-                        const ret = (mergeDeep(updatedResponse, { commandOptions, responseCode: 1 }));
-                        resolve(ret);
-                        return;
-                    }
-                    await sleep(RETRY_WAIT_MS);
-                };
-                reject(new ValidationError({ responseMsg: "max retries used", commandOptions }, -2));
-            }, RETRY_WAIT_MS);
-        }).catch(e => {
+                    clearTimeout(this.retryCommandTimeout);
+                    resolve(state);
+                }, RETRY_WAIT_MS);
+            });
+        } catch (e) {
+            clearTimeout(this.retryCommandTimeout);
             throw e;
-        })
+        }
     }
 
-    clearRetryCommandTimeout() {
-
-        if (this.latestPromiseReject) {
-            const completeResponse: ICompleteResponse = { responseMsg: "canceled by new command", responseCode: 0, deviceState: null, deviceMetaData: null, commandOptions: this.latestPromiseReject.commandOptions }
-            this.latestPromiseReject.reject(completeResponse)
-        };
-
-        if (this.retryCommandTimeout) clearTimeout(this.retryCommandTimeout);
-
-        // this.retryCommandTimeout = null;
-    }
-
-    testLatestPowerCommand(isOn: boolean) {
-        if (isOn === this.latestPowerCommand) return false;
-
-        this.latestPowerCommand = isOn;
-        clearTimeout(this.testPowerStateTimeout);
-        this.testPowerStateTimeout = setTimeout(() => {
-            this.latestPowerCommand = null;
-        }, RESET_LATEST_POWER_COMMAND_MS);
-
-        return true;
+    private async sendCommandToTransport(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<void> {
+        const byteArray = commandToByteArray(deviceCommand, commandOptions);
+        await this.transport.quickSend(byteArray);
     }
 }
 

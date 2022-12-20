@@ -37,7 +37,7 @@ export class Transport {
 
   public async sendWaitResponse(byteArray: number[], timeoutMS: number) {
 
-    this.quickSend(byteArray)
+    await this.quickSend(byteArray)
       .catch(e => { throw e });
     const responseMsg: Buffer = await this.read(timeoutMS)
       .then(res => res).catch(e => { throw e });
@@ -63,6 +63,8 @@ export class Transport {
         const error = new ValidationError(e, -8);
         throw error;
       });
+      // const error = new ValidationError('test', -8);
+      //   throw error;
     return data as Buffer;
   }
 
