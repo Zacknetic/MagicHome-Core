@@ -1,8 +1,8 @@
 {
   "watch": [
-    "src"
+    "src \"src/specs/*.spec.ts\""
   ],
   "ext": "ts",
   "ignore": [],
-  "exec": "tsc && node --trace-warnings ./dist/index.js"
+  "exec": "ts-mocha --timeout 100000 -watch-extensions ts --watch-files src \"src/specs/*.spec.ts\""
 }
