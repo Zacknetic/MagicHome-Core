@@ -4,7 +4,6 @@ import { DeviceInterface } from './DeviceInterface';
 import { Transport } from './Transport';
 import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICompleteDeviceInfo, DEFAULT_COMPLETE_RESPONSE } from './types';
 import { mergeDeep, sleepTimeout } from './utils/miscUtils';
-import { v1 as UUID } from 'uuid';
 
 
 const BROADCAST_PORT: number = 48899;

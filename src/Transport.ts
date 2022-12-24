@@ -31,23 +31,23 @@ export class Transport {
    */
 
   public queryState(timeoutMS: number) {
-    const response = this.sendWaitResponse(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE, timeoutMS).then(res => res).catch(e => { throw e });
+    const response = this.sendWaitResponse(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE, timeoutMS).catch(e => { Promise.reject(e) });
     return response;
   }
 
   public async sendWaitResponse(byteArray: number[], timeoutMS: number) {
-
-    await this.quickSend(byteArray)
-      .catch(e => { throw e });
-    const responseMsg: Buffer = await this.read(timeoutMS)
-      .then(res => res).catch(e => { throw e });
-    if (responseMsg.length < 14) throw new ValidationError("response buffer length is less than 14", -9);
+    try {
+      this.quickSend(byteArray)
+    } catch (error) {
+      Promise.reject(error);
+    }
+    const responseMsg: Buffer | void = await this.read(timeoutMS).catch(e => { Promise.reject(e) });
+    if (responseMsg && responseMsg.length < 14) Promise.reject(new ValidationError("response buffer length is less than 14", -9));
     return responseMsg;
   }
 
-  public async quickSend(byteArray: number[]): Promise<void> {
-
-    await this.connect().then(res => res).catch(e => { throw e });
+  public quickSend(byteArray: number[]) {
+    this.connect().then(res => res).catch(e => { throw e });
     this.write(byteArray);
   }
 
@@ -61,10 +61,10 @@ export class Transport {
     const data = await wait(this.socket, 'data', timeoutMS)
       .catch((e) => {
         const error = new ValidationError(e, -8);
-        throw error;
+        Promise.reject(error);
       });
-      // const error = new ValidationError('test', -8);
-      //   throw error;
+    // const error = new ValidationError('test', -8);
+    //   throw error;
     return data as Buffer;
   }
 
@@ -84,7 +84,7 @@ export class Transport {
       if (retries > 0) return this.connect(retries - 1);
       else {
         const error = new ValidationError(e, -7);
-        throw error;
+        Promise.reject(error);
       }
     });;
   }
@@ -128,7 +128,7 @@ async function wait(emitter: net.Socket, eventName: string, timeout: number) {
     });
 
   }).catch(e => {
-    throw e;
+    Promise.reject(e);
   });
 
 }
