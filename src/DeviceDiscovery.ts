@@ -88,12 +88,16 @@ export async function completeDevices(protoDevices: IProtoDevice[], timeout = 50
 async function completeDevice(protoDevice: IProtoDevice, timeout): Promise<ICompleteDevice> {
   const transport = new Transport(protoDevice.ipAddress);
   const deviceInterface = new DeviceInterface(transport);
-  const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout).catch(() => { throw { protoDevice, response: 'invalidResponse' } })
+  try {
+    const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout);
+    const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() }
+    const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo }
+    return completeDevice;
+  } catch (e) {
+    throw { protoDevice, response: 'invalidResponse' };
+  }
 
-  const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() }
-  const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo }
 
-  return completeDevice;
 }
 
 /**

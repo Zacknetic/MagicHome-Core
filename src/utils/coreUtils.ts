@@ -10,7 +10,7 @@ const {
 
 export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): number[] {
     let commandByteArray: number[];
-
+    let { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
     switch (commandOptions.commandType) {
         case POWER_COMMAND:
             // if (!this.testLatestPowerCommand(deviceCommand.isOn)) {
@@ -24,7 +24,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
         case COLOR_COMMAND:
             //test for bad or insufficient data?
             //construct the color command byte array
-            let { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
+
 
             if (!colorMask) colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
 
@@ -45,8 +45,16 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             break;
 
         case ANIMATION_FRAME:
-            //test for bad or insufficient data?
-            //construct animation frame byte array
+           //test for bad or insufficient data?
+            //construct the color command byte array
+
+            if (!colorMask) colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
+
+            if (commandOptions.isEightByteProtocol) {
+                commandByteArray = [0x31, red, green, blue, warmWhite, colorMask, 0x0F]; //8th byte checksum calculated later in send()
+            } else {
+                commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, colorMask, 0x0F]; //9 byte
+            }
             break;
         default:
             const completeResponse: ICompleteResponse = Object.assign({}, DEFAULT_COMPLETE_RESPONSE, { responseCode: -1, deviceState: null, deviceCommand });
@@ -58,8 +66,10 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
 
 export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: ICompleteResponse, commandType: string): boolean {
     const { deviceState } = deviceResponse;
+    if (deviceState.isOn == false && deviceCommand.isOn == false) return true;
     let omitItems;
     if (commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
+    if (commandType == ANIMATION_FRAME) omitItems = ["isOn"];
     else if (deviceCommand.colorMask == WHITE) omitItems = ["RGB"];
     else omitItems = ["CCT"]
     const isEqual = deepEqual(deviceCommand, deviceState, ['colorMask', ...omitItems]);
