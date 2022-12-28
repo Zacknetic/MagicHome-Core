@@ -58,7 +58,6 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             break;
         default:
             const completeResponse: ICompleteResponse = Object.assign({}, DEFAULT_COMPLETE_RESPONSE, { responseCode: -1, deviceState: null, deviceCommand });
-            console.log("MAGICHOME CORE- CORE UTILS: ", completeResponse);
     }
 
     return commandByteArray;

@@ -1,69 +1,111 @@
-import * as net from 'net';
+import net, { Socket } from 'net';
+import { DEVICE_COMMAND_BYTES, ICompleteResponse, ITransportResponse } from './types';
+import { bufferFromByteArray, bufferToDeviceResponse as bufferToCompleteResponse, mergeDeep, overwriteDeep, ValidationError } from './utils/miscUtils';
+// import net from './tests/mock-net';
+import { Mutex } from './utils/miscUtils';
+
 const PORT = 5577;
-const SOCKET_TIMEOUT_MS = 2000;
+const SOCKET_TIMEOUT_MS = 10000;
 const SOCKET_CONNECTION_RETRIES = 2;
+const IDLE_TIMEOUT_MS = 30000; // 30 seconds
 
 export class Transport {
-    private socket: net.Socket;
-    private ipAddress: string;
-    private port: number;
-    private timeout: number;
-    private connected: boolean;
-    private requestInProgress: boolean;
-
-    constructor(ipAddress: string) {
-        this.ipAddress = ipAddress;
-        this.connected = false;
-        this.requestInProgress = false;
+    private mutex: Mutex;
+    private socket: Socket;
+    private connected = false;
+    private idleTimer: NodeJS.Timeout;
+    constructor(private ipAddress: string) {
+        this.mutex = new Mutex();
     }
 
-    private connect(): void {
-
+    private async connect(): Promise<void> {
+        this.socket = new net.Socket();
         const options = {
             host: this.ipAddress,
             port: PORT,
             timeout: SOCKET_TIMEOUT_MS,
         };
-        this.socket = new net.Socket();
         this.socket.connect(options);
-        this.connected = true;
+
+        try {
+            await wait(this.socket, 'connect', SOCKET_TIMEOUT_MS);
+            this.connected = true;
+            this.startIdleTimer();
+        } catch (err) {
+            this.connected = false;
+            throw err;
+        }
     }
 
     private disconnect(): void {
         this.socket.end();
         this.connected = false;
+        this.stopIdleTimer();
     }
 
-    public send(buffer: Buffer): void {
+    private startIdleTimer(): void {
+        this.stopIdleTimer();
+        this.idleTimer = setTimeout(() => {
+            console.log(`Connection has been idle for ${IDLE_TIMEOUT_MS}ms. Disconnecting.`);
+            this.disconnect();
+        }, IDLE_TIMEOUT_MS);
+    }
+
+    private stopIdleTimer(): void {
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = null;
+        }
+    }
+
+    public send(byteArray: number[]): void {
+        const buffer = bufferFromByteArray(byteArray);
         if (!this.connected) {
             this.connect();
         }
         this.socket.write(buffer);
+        this.resetIdleTimer();
     }
 
-    public async requestState(): Promise<Buffer> {
-        if (this.requestInProgress) {
-            throw new Error('Cannot send multiple requests simultaneously');
+    async requestState(timeout: number): Promise<Buffer> {
+        const release = await this.mutex.lock();
+        if (!this.connected) await this.connect();
+
+        const requestBuffer = bufferFromByteArray(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE);
+
+        try {
+            const data = await wait(this.socket, 'data', timeout, requestBuffer);
+            this.resetIdleTimer();
+            return data;
+        } catch (err) {
+            throw err;
+        } finally {
+            release();
         }
-
-        this.requestInProgress = true;
-
-        if (!this.connected) {
-            this.connect();
-        }
-
-        const requestBuffer = Buffer.from([0xFF, 0xFF, 0xFF]);
-        this.socket.write(requestBuffer);
-
-        return new Promise((resolve, reject) => {
-            this.socket.once('data', (data: Buffer) => {
-                this.requestInProgress = false;
-                resolve(data);
-            });
-            this.socket.once('error', (err: Error) => {
-                this.requestInProgress = false;
-                reject(err);
-            });
-        });
     }
+    private resetIdleTimer(): void {
+        this.stopIdleTimer();
+        this.startIdleTimer();
+    }
+}
+
+async function wait(emitter: Socket, eventName: string, timeout: number, writeData: Buffer = null): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        let timer: NodeJS.Timeout;
+
+        const listener = (data: Buffer) => {
+            clearTimeout(timer);
+            emitter.removeListener(eventName, listener); // remove the listener
+            resolve(data);
+        };
+
+        timer = setTimeout(() => {
+            emitter.off(eventName, listener);
+            reject(`timed out while awaiting: ${eventName}.Timeout: ${timeout}ms`);
+        }, timeout);
+
+        emitter.on(eventName, listener);
+
+        if (writeData) emitter.write(writeData);
+    });
 }

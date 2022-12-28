@@ -173,9 +173,10 @@ export const DEFAULT_COMPLETE_RESPONSE: ICompleteResponse = {
     deviceMetaData: null
 }
 
-export const DEFAULT_COMMAND_OPTIONS = {
+export const DEFAULT_COMMAND_OPTIONS: ICommandOptions = {
     timeoutMS: 50,
     bufferMS: 50,
+    colorAssist: false,
     commandType: COMMAND_TYPE.COLOR_COMMAND,
     waitForResponse: true,
     maxRetries: 5,

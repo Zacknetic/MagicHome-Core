@@ -141,3 +141,36 @@ export class ValidationError extends Error {
     this.stack = (new Error()).stack;
   }
 }
+
+export class Mutex {
+  private locked = false;
+  private queue: ((value: (() => void) | PromiseLike<() => void>) => void)[] = [];
+
+  async lock(): Promise<() => void> {
+    if (this.locked) {
+      return new Promise((resolve: (value: (() => void) | PromiseLike<() => void>) => void, reject: (reason?: any) => void) => {
+        this.queue.push(resolve);
+      });
+    } else {
+      this.locked = true;
+      return () => { this.unlock(); };
+    }
+  }
+
+  unlock(): void {
+    if (this.queue.length > 0) {
+      const resolve = this.queue.shift();
+      resolve(() => { this.unlock(); });
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
+export async function asyncWaitCurveball(timeout) {
+  await new Promise(async (resolve, reject) => {
+    await setTimeout(() => {
+      resolve(true);
+    }, 5000);
+  });
+}

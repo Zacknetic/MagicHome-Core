@@ -2,9 +2,6 @@ import { MockMagicHomeDevice } from "./MockMagicHomeDevice";
 
 const EventEmitter = require('events')
 
-const TIMEOUT = 500
-const WILL_PASS = true;
-
 namespace net {
 
     export interface Socket {
@@ -15,29 +12,27 @@ namespace net {
         destroy,
     }
 
-    export function connect({port, host, timeout}){
-            const netSocket = new NetSocket()
-            netSocket.onConnect();
-            return netSocket;
+    export function connect({ port, host, timeout }) {
+        const netSocket = new NetSocket()
+        netSocket.onConnect(timeout);
+        return netSocket;
     }
 
     export class NetSocket implements Socket {
         protected host: number;
         protected port: number;
-        protected timeout: number;
+        protected timeout: NodeJS.Timeout;
         protected eventEmitter;
-        protected mockDeviceSettings;
         protected mockMagicHomeDevice
         constructor(mockDeviceSettings?) {
             this.mockMagicHomeDevice = new MockMagicHomeDevice();
-            // this.mockDeviceSettings = mockDeviceSettings;
             this.eventEmitter = new EventEmitter();
             this.eventEmitter.setMaxListeners(100)
         }
 
         //https://stackoverflow.com/questions/39820651/node-js-eventemitter-how-to-bind-a-class-context-to-the-event-listener-and-then 
 
-        public once(event, callback, timeout) {
+        public once(event, callback) {
             this.eventEmitter.once(event, (ret?) => {
                 callback(ret);
             });
@@ -50,9 +45,13 @@ namespace net {
         }
 
         public async write(data, dataType?, callback?, testCommandOptions?) {
-            const response = await this.mockMagicHomeDevice.mockSendDeviceCommand(data)
-            if (response) {
-                this.emitData(response)
+            try {
+                const response = await this.mockMagicHomeDevice.mockSendDeviceCommand(data)
+                if (response) {
+                    this.emitData(response)
+                }
+            } catch (error) {
+                this.emitError(error)
             }
             callback();
         }
@@ -61,16 +60,21 @@ namespace net {
             this.eventEmitter.emit('data', data)
         }
 
-        public async onConnect() {
-            //wait for connections and then emit connect event
-            setTimeout(() => {
-                // console.warn("ERROR HERE?", this.eventEmitter)
+        private emitError(error) {
+            this.eventEmitter.emit('error', error)
+        }
 
-                this.eventEmitter.emit('connect')
-            }, TIMEOUT);
+        public async onConnect(timeout) {
+            //wait for connections and then emit connect event
+            this.timeout = setTimeout(() => {
+                this.eventEmitter.emit('timeout')
+            }, timeout);
+
+            this.eventEmitter.emit('connect')
         }
 
         public async end() {
+            clearTimeout(this.timeout)
             this.eventEmitter = new EventEmitter();
         }
 
@@ -78,17 +82,6 @@ namespace net {
             // this.eventEmitter = null;
         }
     }
-
-
-
-
-
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
 }
 
 export default net;
