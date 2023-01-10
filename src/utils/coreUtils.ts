@@ -68,7 +68,7 @@ export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: ICom
     if (deviceState.isOn == false && deviceCommand.isOn == false) return true;
     let omitItems;
     if (commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
-    if (commandType == ANIMATION_FRAME) omitItems = ["isOn"];
+    else if (commandType == ANIMATION_FRAME) omitItems = ["isOn"];
     else if (deviceCommand.colorMask == WHITE) omitItems = ["RGB"];
     else omitItems = ["CCT"]
     const isEqual = deepEqual(deviceCommand, deviceState, ['colorMask', ...omitItems]);

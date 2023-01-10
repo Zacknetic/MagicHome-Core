@@ -1,1 +1,0 @@
-//Network class which detects all network interfaces and parse the cidr to get the base and broadcast addresses

@@ -56,7 +56,7 @@ export class DeviceInterface {
                 isValidState = isStateEqual(deviceCommand, state, commandOptions.commandType);
                 if (!isValidState) {
                     // console.log('wrongState - retrying', state, deviceCommand, commandOptions.commandType);
-                    this.sendCommandToTransport(deviceCommand, commandOptions);
+                    await this.sendCommandToTransport(deviceCommand, commandOptions);
                 }
                 retryCount--;
                 await new Promise((resolve) => setTimeout(resolve, 1000));
