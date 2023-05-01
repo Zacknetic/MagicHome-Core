@@ -12,11 +12,15 @@ const BROADCAST_MAGIC_STRING: string = 'HF-A11ASSISTHREAD';
 export async function discoverDevices(timeout = 500, customSubnets: string[] = []): Promise<IProtoDevice[]> {
   const userInterfaces: string[] = [];
 
-
-  for (const subnet of Network.subnets()) {
-    userInterfaces.push(subnet.broadcast);
+  if (dockerHostMode()) {
+    userInterfaces.push("255.255.255.255");
+  } else {
+    for (const subnet of Network.subnets()) {
+      userInterfaces.push(subnet.broadcast);
+    }
+    userInterfaces.push(...customSubnets);
   }
-  userInterfaces.push(...customSubnets);
+
   const protoDevicesSet = new Set<string>();
   const protoDevicesList: IProtoDevice[] = [];
   const socket: dgram.Socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -55,6 +59,8 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
   await sleepTimeout(timeout).catch(e => { throw 'sleep somehow failed' });
   socket.close();
   return protoDevicesList;
+
+
 }
 
 /**
@@ -120,4 +126,8 @@ export function completeCustomDevices(completeDevicesInfo: ICompleteDeviceInfo[]
   };
 
   return completeDevices;
+}
+
+function dockerHostMode(): boolean {
+  return !!process.env.DOCKER_HOST_NETWORK;
 }

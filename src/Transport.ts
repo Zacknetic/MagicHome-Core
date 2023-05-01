@@ -33,11 +33,10 @@ export class Transport {
             this.connected = true;
             this.startIdleTimer();
             this.socket.on('error', (error) => {
-                throw new  ('Socket error:', error);
+                throw "Socket Error: " + error;
             });
         } catch (err) {
-            
-            this.connected = false;
+            this.disconnect(true);
             throw err;
         }
     }
@@ -91,7 +90,7 @@ export class Transport {
         if (!this.connected) {
             // console.log('Not connected. Attempting to connect...');
             await this.connect().catch((err) => {
-                console.error('Error in MH Core Transport Class Send: ', err);
+                // console.error('Error in MH Core Transport Class Send: ', err);
                 // throw err;
             });
         }
