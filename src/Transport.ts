@@ -1,17 +1,6 @@
 import net, { Socket } from "net";
-import {
-  DEVICE_COMMAND_BYTES,
-  ICompleteResponse,
-  ITransportResponse,
-} from "./types";
-import {
-  asyncWaitCurveball,
-  bufferFromByteArray,
-  bufferToDeviceResponse as bufferToCompleteResponse,
-  mergeDeep,
-  overwriteDeep,
-  ValidationError,
-} from "./utils/miscUtils";
+import { DEVICE_COMMAND_BYTES, ICompleteResponse, ITransportResponse } from "./types";
+import { asyncWaitCurveball, bufferFromByteArray, bufferToDeviceResponse as bufferToCompleteResponse, mergeDeep, overwriteDeep, ValidationError } from "./utils/miscUtils";
 // import net from './tests/mock-net';
 import { Mutex } from "./utils/miscUtils";
 
@@ -92,32 +81,32 @@ export class Transport {
     this.startIdleTimer();
   }
 
-    public async send(byteArray: number[]): Promise<void> {
+  public async send(byteArray: number[]): Promise<void> {
     const release = await this.mutex.lock();
     const buffer = bufferFromByteArray(byteArray);
     if (!this.connected) {
-        // console.log('Not connected. Attempting to connect...');
-        await this.connect().catch((err) => {
-            // console.error('Error in MH Core Transport Class Send: ', err);
-            // throw err;
-        });
+      // console.log('Not connected. Attempting to connect...');
+      await this.connect().catch((err) => {
+        // console.error('Error in MH Core Transport Class Send: ', err);
+        // throw err;
+      });
     }
     this.socket.write(buffer);
     this.resetIdleTimer();
     release();
-}
+  }
 
   async requestState(timeout: number): Promise<Buffer> {
     const release = await this.mutex.lock();
-        if (!this.connected) await this.connect().catch((err) => {
-            console.error('Error in MH Core Transport Class requestState: ', err);
-        // throw err;
+    if (!this.connected)
+      await this.connect().catch((err) => {
+        throw err;
       });
     // await asyncWaitCurveball(3000)
-        const requestBuffer = bufferFromByteArray(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE);
+    const requestBuffer = bufferFromByteArray(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE);
 
     try {
-            const data = await wait(this.socket, 'data', timeout, requestBuffer, null);
+      const data = await wait(this.socket, "data", timeout, requestBuffer, null);
       this.resetIdleTimer();
       return data;
     } catch (err) {
@@ -141,7 +130,7 @@ async function wait(emitter: Socket, eventName: string, timeout: number, writeDa
 
     timer = setTimeout(() => {
       emitter.off(eventName, listener);
-      reject(`timed out while awaiting: ${eventName}.Timeout: ${timeout}ms`);
+      reject(`timed out while awaiting: ${eventName}. Timeout was: ${timeout}ms`);
     }, timeout);
 
     emitter.on(eventName, listener);
@@ -149,6 +138,4 @@ async function wait(emitter: Socket, eventName: string, timeout: number, writeDa
     if (writeData) emitter.write(writeData);
     if (callback) callback();
   });
-
-  
 }

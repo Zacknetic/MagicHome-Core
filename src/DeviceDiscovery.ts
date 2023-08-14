@@ -1,13 +1,12 @@
-import * as dgram from 'dgram';
-import { Network } from './Network';
-import { DeviceInterface } from './DeviceInterface';
-import { Transport } from './Transport';
-import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICompleteDeviceInfo, DEFAULT_COMPLETE_RESPONSE } from './types';
-import { mergeDeep, sleepTimeout } from './utils/miscUtils';
-
+import * as dgram from "dgram";
+import { Network } from "./Network";
+import { DeviceInterface } from "./DeviceInterface";
+import { Transport } from "./Transport";
+import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICompleteDeviceInfo, DEFAULT_COMPLETE_RESPONSE } from "./types";
+import { mergeDeep, sleepTimeout } from "./utils/miscUtils";
 
 const BROADCAST_PORT: number = 48899;
-const BROADCAST_MAGIC_STRING: string = 'HF-A11ASSISTHREAD';
+const BROADCAST_MAGIC_STRING: string = "HF-A11ASSISTHREAD";
 
 export async function discoverDevices(timeout = 500, customSubnets: string[] = []): Promise<IProtoDevice[]> {
   const userInterfaces: string[] = [];
@@ -23,26 +22,25 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
 
   const protoDevicesSet = new Set<string>();
   const protoDevicesList: IProtoDevice[] = [];
-  const socket: dgram.Socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+  const socket: dgram.Socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
 
   socket.bind(BROADCAST_PORT);
 
-  socket.on('error', (err) => {
+  socket.on("error", (err) => {
     socket.close();
     return err;
   });
 
-  socket.on('listening', () => {
+  socket.on("listening", () => {
     socket.setBroadcast(true);
     for (const userInterface of userInterfaces) {
       socket.send(BROADCAST_MAGIC_STRING, BROADCAST_PORT, userInterface);
     }
-
   });
 
-  socket.on('message', (msg, rinfo) => {
+  socket.on("message", (msg, rinfo) => {
     const address = rinfo.address;
-    const parts = msg.toString().split(',');
+    const parts = msg.toString().split(",");
     if (parts.length !== 3) return;
 
     const [ipAddress, uniqueId, modelNumber] = parts;
@@ -53,18 +51,17 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
       uniqueId,
       modelNumber,
     });
-
   });
 
-  await sleepTimeout(timeout).catch(e => { throw 'sleep somehow failed' });
+  await sleepTimeout(timeout).catch((e) => {
+    throw "sleep somehow failed";
+  });
   socket.close();
   return protoDevicesList;
-
-
 }
 
 /**
- * 
+ *
  * @param protoDevices IProtoDevice[]
  * @param timeout number
  * @returns completeDevice[]
@@ -72,38 +69,46 @@ export async function discoverDevices(timeout = 500, customSubnets: string[] = [
 
 export async function completeDevices(protoDevices: IProtoDevice[], timeout = 500, retries = 3): Promise<ICompleteDevice[]> {
   if (protoDevices.length < 1) return;
-  const deviceResponses: Promise<ICompleteDevice>[] = []
+  const deviceResponses: Promise<ICompleteDevice>[] = [];
   const completedDevices: ICompleteDevice[] = [];
   const retryProtoDevices: IProtoDevice[] = [];
 
   protoDevices.forEach((protoDevice) => {
-    deviceResponses.push(completeDevice(protoDevice, timeout));
-  })
+    deviceResponses.push(
+      completeDevice(protoDevice, timeout).catch((e) => {
+        throw e;
+      })
+    );
+  });
 
-  await Promise.allSettled(deviceResponses).then(results => {
-    results.forEach(result => {
-      if (result.status === 'fulfilled') completedDevices.push(result.value);
-      else retryProtoDevices.push(result.reason.protoDevice)
+  await Promise.allSettled(deviceResponses).then((results) => {
+    results.forEach((result) => {
+      if (result.status === "fulfilled") completedDevices.push(result.value);
+      else retryProtoDevices.push(result.reason.protoDevice);
     });
   });
-  if (retryProtoDevices.length > 0 && retries > 0) completedDevices.push(... await completeDevices(retryProtoDevices, timeout, retries - 1).catch(e => { throw e }));
+  if (retryProtoDevices.length > 0 && retries > 0)
+    completedDevices.push(
+      ...(await completeDevices(retryProtoDevices, timeout, retries - 1).catch((e) => {
+        throw e;
+      }))
+    );
 
   return completedDevices;
 }
 
 async function completeDevice(protoDevice: IProtoDevice, timeout): Promise<ICompleteDevice> {
-  const transport = new Transport(protoDevice.ipAddress);
-  const deviceInterface = new DeviceInterface(transport);
   try {
+    const transport = new Transport(protoDevice.ipAddress);
+    const deviceInterface = new DeviceInterface(transport);
+
     const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout);
-    const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() }
-    const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo }
+    const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() };
+    const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo };
     return completeDevice;
   } catch (e) {
-    throw { protoDevice, response: 'invalidResponse' };
+    throw { protoDevice, response: "invalidResponse", e };
   }
-
-
 }
 
 /**
@@ -115,15 +120,17 @@ export function completeCustomDevices(completeDevicesInfo: ICompleteDeviceInfo[]
   const completeDevices: ICompleteDevice[] = [];
 
   for (const completeDeviceInfo of completeDevicesInfo) {
-    const { protoDevice: { ipAddress } } = completeDeviceInfo;
+    const {
+      protoDevice: { ipAddress },
+    } = completeDeviceInfo;
 
     const transport = new Transport(ipAddress);
     const deviceInterface = new DeviceInterface(transport);
 
     const completeResponse: ICompleteResponse = mergeDeep({}, DEFAULT_COMPLETE_RESPONSE);
-    const completeDevice: ICompleteDevice = { completeDeviceInfo, deviceInterface, completeResponse }
+    const completeDevice: ICompleteDevice = { completeDeviceInfo, deviceInterface, completeResponse };
     completeDevices.push(completeDevice);
-  };
+  }
 
   return completeDevices;
 }
