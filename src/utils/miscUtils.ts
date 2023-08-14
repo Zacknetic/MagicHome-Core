@@ -82,24 +82,29 @@ export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
  * @param target
  * @param ...sources
  */
-export function mergeDeep(target: any, ...sources) {
+export function mergeDeep(target, ...sources) {
   if (!sources.length) return target;
-  if (!target) target = {};
   const source = sources.shift();
+
+  if (target == null) target = {};
 
   if (isObject(target) && isObject(source)) {
     for (const key in source) {
-      if (isObject(source[key])) {
-        if (!target[key]) Object.assign(target, { [key]: {} });
-        mergeDeep(target[key], source[key]);
-      } else {
-        if (target[key] == null) Object.assign(target, { [key]: source[key] });
+      if (source.hasOwnProperty(key)) {
+        if (isObject(source[key])) {
+          if (!target[key]) target[key] = {};
+          target[key] = mergeDeep(target[key], source[key]); // Assign the result back to target[key]
+        } else {
+          target[key] = source[key];
+        }
       }
     }
   }
 
   return mergeDeep(target, ...sources);
 }
+
+
 
 
 /**

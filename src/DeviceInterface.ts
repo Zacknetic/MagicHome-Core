@@ -84,6 +84,7 @@ export class DeviceInterface {
         clearTimeout(this.timeoutId);
         this.timeoutId = null;
         if (this.rejections.length > 0)
-            this.rejections.forEach(reject => reject('exit early'));
+            this.rejections.forEach(reject => reject('exit early')); 
     }
 }
+ 

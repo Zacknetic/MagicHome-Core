@@ -1,35 +1,72 @@
-// // import { DeviceInterface } from '../DeviceInterface'
-// // import { ICommandOptions, ICommandResponse, IDeviceCommand } from '../types';
+// import { DeviceInterface } from '../DeviceInterface'
+// import { ICommandOptions, ICommandResponse, IDeviceCommand } from '../types';
 
-// import assert = require('assert');
-// import { discoverDevices, completeDevices, completeCustomDevices } from '../DeviceDiscovery';
-// import { ICompleteDevice, ICompleteDeviceInfo, IDeviceMetaData, IProtoDevice } from '../types';
-// import { mergeDeep } from '../utils/miscUtils';
-// // import * as types from '../types'
+import assert = require("assert");
+import { discoverDevices, completeDevices } from "../DeviceDiscovery";
+import { ICompleteDevice } from "../types";
+import { ICommandOptions } from "../types";
+import * as types from "../types";
+// import * as types from '../types'
 
-// let protoDevices: IProtoDevice[];
-// let completedDevices: ICompleteDevice[];
-// describe('Test DeviceDiscovery class functions', function () {
-//     it('Should scan for devices and create Prototype[]', async function () {
-//         protoDevices = await discoverDevices();
-//         assert.strictEqual(protoDevices.length > 0, true);
-//     })
+describe("Test DeviceDiscovery class functions", function () {
+  const {
+    COMMAND_TYPE: { COLOR_COMMAND },
+  } = types;
 
+  describe("Test the DeviceInterface class", () => {
+    const commandOptions: ICommandOptions = {
+      colorAssist: false,
+      waitForResponse: true,
+      maxRetries: 5,
+      remainingRetries: 5,
+      commandType: COLOR_COMMAND,
+      timeoutMS: 50,
+      isEightByteProtocol: true,
+    };
 
-//     it('Should create a CompleteDevice for each ProtoDevice', async function () {
-//         const completedDevices: ICompleteDevice[] = await completeDevices(protoDevices, 500, 10);
-//         assert.strictEqual(protoDevices.length, completedDevices.length);
-//     })
+    it("Should find all devices, create CompleteDevice, and set light state to red", async function () {
+      // Discover devices
+      const protoDevices = await discoverDevices();
+      assert.strictEqual(protoDevices.length > 0, true);
 
-//     it('Should create a valid custom device using partial data', function () {
-//         const protoDevice: IProtoDevice = { ipAddress: "192.168.1.12", uniqueId: 'random', modelNumber: 'zacknetic001' }
-//         const deviceMetaData: IDeviceMetaData = { controllerHardwareVersion: 0x35, controllerFirmwareVersion: 0x09, rawData: Buffer.from([0, 0]) }
-//         const completeDeviceInfo: ICompleteDeviceInfo = { protoDevice, deviceMetaData, latestUpdate: Date.now() }
-//         const customDevices: ICompleteDevice[] = completeCustomDevices([completeDeviceInfo])
-//         assert.deepStrictEqual(customDevices[0].completeDeviceInfo.protoDevice, {
-//             ipAddress: "192.168.1.12",
-//             modelNumber: "zacknetic001",
-//             uniqueId: "random",
-//         })
-//     })
-// });
+      // Create CompleteDevice for each ProtoDevice
+      const completedDevices: ICompleteDevice[] = await completeDevices(
+        protoDevices,
+        500,
+        10
+      );
+      assert.strictEqual(protoDevices.length, completedDevices.length);
+
+      // Define the red command
+      const deviceCommand = {
+        isOn: true,
+        RGB: { red: 255, green: 0, blue: 0 },
+        CCT: { warmWhite: 0, coldWhite: 0 },
+        colorMask: 0xf0,
+      };
+
+      // Create an array of promises to send the red command to each device
+      const promises = completedDevices.map(async (device) => {
+        try {
+          const returnValue: types.ICompleteResponse | void =
+            await device.deviceInterface.sendCommand(
+              deviceCommand,
+              commandOptions
+            );
+        //   console.log(
+        //     `Device ${device.completeDeviceInfo.protoDevice.ipAddress} return value: `,
+        //     returnValue
+        //   );
+        } catch (err) {
+        //   console.log(
+        //     `Device ${device.completeDeviceInfo.protoDevice.ipAddress} error: `,
+        //     err
+        //   );
+        }
+      });
+
+      // Wait for all promises to complete
+      await Promise.all(promises);
+    });
+  });
+});

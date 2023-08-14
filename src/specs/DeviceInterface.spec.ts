@@ -37,35 +37,6 @@
 //                 console.log('Cool err', err);
 //             });
 //         await sleep(200);
-
-//         deviceCommand = { isOn: true, RGB: { red: 0, green: 255, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xF0 };
-
-//         deviceInterface.sendCommand(deviceCommand, commandOptions)
-//             .then((returnValue: types.ICompleteResponse) => {
-//                 console.log('return value: ', returnValue);
-//             }).catch(err => {
-//                 console.log('FATAL err', err);
-//             });
-//         await sleep(200);
-
-//         deviceCommand = { isOn: true, RGB: { red: 255, green: 255, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xF0 };
-
-//         deviceInterface.sendCommand(deviceCommand, commandOptions)
-//             .then((returnValue: types.ICompleteResponse) => {
-//                 console.log('return value: ', returnValue);
-//             }).catch(err => {
-//                 console.log('FATAL err', err);
-//             });
-//         await sleep(200);
-
-//         deviceCommand = { isOn: true, RGB: { red: 0, green: 0, blue: 255 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xF0 };
-
-//         deviceInterface.sendCommand(deviceCommand, commandOptions)
-//             .then((returnValue: types.ICompleteResponse) => {
-//                 console.log('return value: ', returnValue);
-//             }).catch(err => {
-//                 console.log('FATAL err', err);
-//             });
 //     })
 
 // });
