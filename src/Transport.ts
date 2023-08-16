@@ -1,7 +1,6 @@
 import net, { Socket } from "net";
-import { DEVICE_COMMAND_BYTES, ICompleteResponse, ITransportResponse } from "./types";
-import { asyncWaitCurveball, bufferFromByteArray, bufferToDeviceResponse as bufferToCompleteResponse, mergeDeep, overwriteDeep, ValidationError } from "./utils/miscUtils";
-// import net from './tests/mock-net';
+import { DEVICE_COMMAND_BYTES } from "./types";
+import { bufferFromByteArray } from "./utils/miscUtils";
 import { Mutex } from "./utils/miscUtils";
 
 const PORT = 5577;
@@ -18,6 +17,8 @@ export class Transport {
   }
 
   private async connect(): Promise<void> {
+    
+    try {
     this.socket = new net.Socket();
     const options = {
       host: this.ipAddress,
@@ -25,17 +26,24 @@ export class Transport {
       timeout: SOCKET_TIMEOUT_MS,
     };
 
-    this.socket.connect(options);
-    try {
+    //we need to handle the error event, otherwise it will throw an exception
+    //currently it is not possible to catch this exception. To fix it we must use
+    //the async version of connect and handle the exception there. The way to do it is as follows:
+
+
+
+    this.socket.on("error", () => {
+    });
+
+    this.socket.connect(options, () => {
+    });
+    
       await wait(this.socket, "connect", SOCKET_TIMEOUT_MS, null, null);
       this.connected = true;
       this.startIdleTimer();
-      this.socket.on("error", (error) => {
-        throw "Socket Error: " + error;
-      });
-    } catch (err) {
-      this.disconnect(true);
-      throw err;
+    } catch (e) {
+      await this.disconnect(true);
+      throw Error("MHCore ConnectError: " + e);
     }
   }
 
@@ -43,29 +51,18 @@ export class Transport {
     this.stopIdleTimer();
     const release = await this.mutex.lock();
 
-    if (forceDestroy) {
+    if (forceDestroy || this.connected) {
       this.socket.destroy();
       this.socket.removeAllListeners();
       this.connected = false;
-      release();
-    } else if (this.connected) {
-      this.startIdleTimer(true);
-      this.socket.end();
-      this.socket.on("close", () => {
-        // console.log("Socket closed gracefully")
-        this.stopIdleTimer();
-        this.socket.removeAllListeners();
-        this.connected = false;
-        release();
-      });
     }
+    release();
   }
 
-  private startIdleTimer(forceDestroy = false): void {
+  private startIdleTimer(): void {
     this.stopIdleTimer();
     this.idleTimer = setTimeout(() => {
-      // console.log(`Connection has been idle for ${IDLE_TIMEOUT_MS}ms. Disconnecting.`);
-      this.disconnect(forceDestroy);
+      this.disconnect();
     }, IDLE_TIMEOUT_MS);
   }
 
@@ -85,11 +82,7 @@ export class Transport {
     const release = await this.mutex.lock();
     const buffer = bufferFromByteArray(byteArray);
     if (!this.connected) {
-      // console.log('Not connected. Attempting to connect...');
-      await this.connect().catch((err) => {
-        // console.error('Error in MH Core Transport Class Send: ', err);
-        // throw err;
-      });
+      await this.connect();
     }
     this.socket.write(buffer);
     this.resetIdleTimer();
@@ -98,19 +91,17 @@ export class Transport {
 
   async requestState(timeout: number): Promise<Buffer> {
     const release = await this.mutex.lock();
-    if (!this.connected)
-      await this.connect().catch((err) => {
-        throw err;
-      });
-    // await asyncWaitCurveball(3000)
+    if (!this.connected) {
+      await this.connect();
+    }
     const requestBuffer = bufferFromByteArray(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE);
 
     try {
       const data = await wait(this.socket, "data", timeout, requestBuffer, null);
       this.resetIdleTimer();
       return data;
-    } catch (err) {
-      throw err;
+    } catch (e) {
+      throw Error("MHCore requestState: " + e);
     } finally {
       release();
     }
@@ -122,9 +113,8 @@ async function wait(emitter: Socket, eventName: string, timeout: number, writeDa
     let timer: NodeJS.Timeout;
 
     const listener = (data: Buffer) => {
-      // console.log("listener called: ", eventName)
       clearTimeout(timer);
-      emitter.removeListener(eventName, listener); // remove the listener
+      emitter.removeListener(eventName, listener);
       resolve(data);
     };
 

@@ -8,7 +8,7 @@ import { mergeDeep, sleepTimeout } from "./utils/miscUtils";
 const BROADCAST_PORT: number = 48899;
 const BROADCAST_MAGIC_STRING: string = "HF-A11ASSISTHREAD";
 
-export async function discoverDevices(timeout = 500, customSubnets: string[] = []): Promise<IProtoDevice[]> {
+export async function discoverDevices(timeout = 1000, customSubnets: string[] = []): Promise<IProtoDevice[]> {
   const userInterfaces: string[] = [];
 
   if (dockerHostMode()) {
@@ -76,7 +76,7 @@ export async function completeDevices(protoDevices: IProtoDevice[], timeout = 50
   protoDevices.forEach((protoDevice) => {
     deviceResponses.push(
       completeDevice(protoDevice, timeout).catch((e) => {
-        throw e;
+        throw Error("DeviceDiscoveryError: " + e)
       })
     );
   });
@@ -90,7 +90,7 @@ export async function completeDevices(protoDevices: IProtoDevice[], timeout = 50
   if (retryProtoDevices.length > 0 && retries > 0)
     completedDevices.push(
       ...(await completeDevices(retryProtoDevices, timeout, retries - 1).catch((e) => {
-        throw e;
+        throw Error("DeviceDiscoveryError: " + e)
       }))
     );
 
@@ -107,7 +107,7 @@ async function completeDevice(protoDevice: IProtoDevice, timeout): Promise<IComp
     const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo };
     return completeDevice;
   } catch (e) {
-    throw { protoDevice, response: "invalidResponse", e };
+    throw Error("completeDeviceError: " + e)
   }
 }
 

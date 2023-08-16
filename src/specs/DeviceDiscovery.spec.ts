@@ -53,10 +53,6 @@ describe("Test DeviceDiscovery class functions", function () {
               deviceCommand,
               commandOptions
             );
-        //   console.log(
-        //     `Device ${device.completeDeviceInfo.protoDevice.ipAddress} return value: `,
-        //     returnValue
-        //   );
         } catch (err) {
         //   console.log(
         //     `Device ${device.completeDeviceInfo.protoDevice.ipAddress} error: `,

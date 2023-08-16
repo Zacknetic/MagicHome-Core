@@ -64,6 +64,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
 }
 
 export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: ICompleteResponse, commandType: string): boolean {
+    if(deviceResponse.responseCode < 1) return;
     const { deviceState } = deviceResponse;
     if (deviceState.isOn == false && deviceCommand.isOn == false) return true;
     let omitItems;

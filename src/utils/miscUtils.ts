@@ -1,11 +1,9 @@
 import { ICompleteResponse } from "../types";
 
-export function bufferToDeviceResponse(data: Buffer): ICompleteResponse {
-  if (!Buffer.isBuffer(data) || data.length < 14) throw new Error('test');
-  ;
+export function bufferToCompleteResponse(data: Buffer): ICompleteResponse {
+  if (!Buffer.isBuffer(data) || data.length < 14) throw new Error("Invalid buffer" + data.toString("hex"));
 
   const completeResponse: ICompleteResponse = {
-
     responseCode: 1,
     deviceState: {
       isOn: data.readUInt8(2) === 0x23,
@@ -17,16 +15,15 @@ export function bufferToDeviceResponse(data: Buffer): ICompleteResponse {
       CCT: {
         warmWhite: data.readUInt8(9),
         coldWhite: data.readUInt8(11),
-      }
+      },
     },
 
     deviceMetaData: {
       controllerHardwareVersion: data.readUInt8(1),
       controllerFirmwareVersion: data.readUInt8(10),
       rawData: data,
-    }
-
-  }
+    },
+  };
 
   return completeResponse;
 }
@@ -50,7 +47,7 @@ export function bufferFromByteArray(byteArray: number[], useChecksum = true) {
 
   if (useChecksum) payload = calcChecksum(buffer);
 
-  return payload
+  return payload;
 }
 
 export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
@@ -62,15 +59,11 @@ export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
     return false;
   }
   for (const key of keys1) {
-
     if (omitSet.has(key)) continue;
     const val1 = object1[key];
     const val2 = object2[key];
     const areObjects = isObject(val1) && isObject(val2);
-    if (
-      areObjects && !deepEqual(val1, val2, omitKeysArr) ||
-      !areObjects && val1 !== val2
-    ) {
+    if ((areObjects && !deepEqual(val1, val2, omitKeysArr)) || (!areObjects && val1 !== val2)) {
       return false;
     }
   }
@@ -103,9 +96,9 @@ export function mergeDeep(target, ...sources) {
 
   return mergeDeep(target, ...sources);
 }
-
-
-
+export function isObject(item) {
+  return item && typeof item === "object" && !Array.isArray(item);
+}
 
 /**
  * Deep overwrite two objects.
@@ -130,12 +123,9 @@ export function overwriteDeep(target, ...sources) {
   return overwriteDeep(target, ...sources);
 }
 
-export function isObject(item) {
-  return (item && typeof item === 'object' && !Array.isArray(item));
-}
 
 export function sleepTimeout(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export class ValidationError extends Error {
@@ -143,7 +133,7 @@ export class ValidationError extends Error {
     super(message); // (1)
     this.name = "ValidationError"; // (2)
     this.responseCode = responseCode;
-    this.stack = (new Error()).stack;
+    this.stack = new Error().stack;
   }
 }
 
@@ -158,14 +148,18 @@ export class Mutex {
       });
     } else {
       this.locked = true;
-      return () => { this.unlock(); };
+      return () => {
+        this.unlock();
+      };
     }
   }
 
   unlock(): void {
     if (this.queue.length > 0) {
       const resolve = this.queue.shift();
-      resolve(() => { this.unlock(); });
+      resolve(() => {
+        this.unlock();
+      });
     } else {
       this.locked = false;
     }
