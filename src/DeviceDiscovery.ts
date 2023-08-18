@@ -2,8 +2,9 @@ import * as dgram from "dgram";
 import { Network } from "./Network";
 import { DeviceInterface } from "./DeviceInterface";
 import { Transport } from "./Transport";
-import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICompleteDeviceInfo, DEFAULT_COMPLETE_RESPONSE } from "./types";
+import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICompleteDeviceInfo, DEFAULT_COMPLETE_RESPONSE, IFetchStateResponse } from "./types";
 import { mergeDeep, sleepTimeout } from "./utils/miscUtils";
+import { generateCompleteResponse } from "./utils/MHResponses";
 
 const BROADCAST_PORT: number = 48899;
 const BROADCAST_MAGIC_STRING: string = "HF-A11ASSISTHREAD";
@@ -102,9 +103,10 @@ async function completeDevice(protoDevice: IProtoDevice, timeout): Promise<IComp
     const transport = new Transport(protoDevice.ipAddress);
     const deviceInterface = new DeviceInterface(transport);
 
-    const completeResponse: ICompleteResponse = await deviceInterface.queryState(timeout);
-    const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: completeResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() };
-    const completeDevice: ICompleteDevice = { completeResponse, deviceInterface, completeDeviceInfo };
+    const fetchStateResponse: IFetchStateResponse = await deviceInterface.queryState(timeout);
+    const completeDeviceInfo: ICompleteDeviceInfo = { deviceMetaData: fetchStateResponse.deviceMetaData, protoDevice, latestUpdate: Date.now() };
+    const completeResponse: ICompleteResponse = generateCompleteResponse({fetchStateResponse, responseCode: 1, deviceCommand: null, responseMsg: "completeDevice"});
+    const completeDevice: ICompleteDevice = {completeResponse, deviceInterface, completeDeviceInfo };
     return completeDevice;
   } catch (e) {
     throw Error("completeDeviceError: " + e)
@@ -127,7 +129,7 @@ export function completeCustomDevices(completeDevicesInfo: ICompleteDeviceInfo[]
     const transport = new Transport(ipAddress);
     const deviceInterface = new DeviceInterface(transport);
 
-    const completeResponse: ICompleteResponse = mergeDeep({}, DEFAULT_COMPLETE_RESPONSE);
+    const completeResponse: ICompleteResponse = mergeDeep<ICompleteResponse>({}, DEFAULT_COMPLETE_RESPONSE);
     const completeDevice: ICompleteDevice = { completeDeviceInfo, deviceInterface, completeResponse };
     completeDevices.push(completeDevice);
   }

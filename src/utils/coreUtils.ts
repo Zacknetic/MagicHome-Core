@@ -1,5 +1,5 @@
 import * as types from '../types';
-import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, DEFAULT_COMPLETE_RESPONSE, COLOR_MASKS } from '../types'
+import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, DEFAULT_COMPLETE_RESPONSE, COLOR_MASKS, IFetchStateResponse } from '../types'
 import { deepEqual } from './miscUtils';
 const {
     COLOR_MASKS: { WHITE, COLOR, BOTH },
@@ -63,8 +63,8 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
     return commandByteArray;
 }
 
-export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: ICompleteResponse, commandType: string): boolean {
-    if(deviceResponse.responseCode < 1) return;
+export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: IFetchStateResponse, commandType: string): boolean {
+
     const { deviceState } = deviceResponse;
     if (deviceState.isOn == false && deviceCommand.isOn == false) return true;
     let omitItems;

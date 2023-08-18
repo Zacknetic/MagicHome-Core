@@ -1,10 +1,9 @@
-import { ICompleteResponse } from "../types";
+import { IFetchStateResponse } from "../types";
 
-export function bufferToCompleteResponse(data: Buffer): ICompleteResponse {
+export function bufferToFetchStateResponse(data: Buffer): IFetchStateResponse {
   if (!Buffer.isBuffer(data) || data.length < 14) throw new Error("Invalid buffer" + data.toString("hex"));
 
-  const completeResponse: ICompleteResponse = {
-    responseCode: 1,
+  const partialResponse: IFetchStateResponse = {
     deviceState: {
       isOn: data.readUInt8(2) === 0x23,
       RGB: {
@@ -25,7 +24,7 @@ export function bufferToCompleteResponse(data: Buffer): ICompleteResponse {
     },
   };
 
-  return completeResponse;
+  return partialResponse;
 }
 
 export function calcChecksum(buffer: Uint8Array) {
@@ -75,30 +74,40 @@ export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
  * @param target
  * @param ...sources
  */
-export function mergeDeep(target, ...sources) {
+function isObject(item: any): item is Record<string, any> {
+  return item && typeof item === 'object' && !Array.isArray(item);
+}
+
+type Combined<T, Sources extends any[]> = T extends object
+  ? {
+      [K in keyof T]: K extends keyof Sources[number]
+        ? Combined<T[K], Extract<Sources[number][K], object>[]>
+        : never;
+    }
+  : never;
+
+type CanCombineTo<T, Sources extends any[]> = unknown extends Combined<T, Sources> ? false : true;
+
+export function mergeDeep<T>(target: any, ...sources: Partial<T>[] & CanCombineTo<T, [T, ...Partial<T>[]]> extends true ? T[] :never): T {
   if (!sources.length) return target;
   const source = sources.shift();
 
-  if (target == null) target = {};
+  if (target == null || !isObject(target) || !isObject(source)) return target;
 
-  if (isObject(target) && isObject(source)) {
-    for (const key in source) {
-      if (source.hasOwnProperty(key)) {
-        if (isObject(source[key])) {
-          if (!target[key]) target[key] = {};
-          target[key] = mergeDeep(target[key], source[key]); // Assign the result back to target[key]
-        } else {
-          target[key] = source[key];
-        }
+  for (const key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      if (isObject(source[key])) {
+        if (!target[key]) target[key] = {} as any;
+        target[key] = mergeDeep(target[key] as any, source[key] as any); // Assign the result back to target[key]
+      } else {
+        target[key] = source[key] as any;
       }
     }
   }
 
   return mergeDeep(target, ...sources);
 }
-export function isObject(item) {
-  return item && typeof item === "object" && !Array.isArray(item);
-}
+
 
 /**
  * Deep overwrite two objects.
@@ -122,7 +131,6 @@ export function overwriteDeep(target, ...sources) {
 
   return overwriteDeep(target, ...sources);
 }
-
 
 export function sleepTimeout(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

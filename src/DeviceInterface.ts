@@ -1,9 +1,10 @@
-import { ICommandOptions, IDeviceCommand, ICompleteResponse, DEFAULT_COMMAND_OPTIONS } from "./types";
+import { ICommandOptions, IDeviceCommand, ICompleteResponse, DEFAULT_COMMAND_OPTIONS, IFetchStateResponse, DEFAULT_COMPLETE_RESPONSE, ErrorType } from "./types";
 
 import { EventEmitter } from "events";
 import { Transport } from "./Transport";
 import { commandToByteArray, isStateEqual } from "./utils/coreUtils";
-import { bufferFromByteArray, bufferToCompleteResponse, mergeDeep } from "./utils/miscUtils";
+import { bufferFromByteArray, bufferToFetchStateResponse, mergeDeep } from "./utils/miscUtils";
+import { MHError } from "./utils/MHResponses";
 
 type CancellationToken = {
   isCancelled: boolean;
@@ -20,25 +21,24 @@ export class DeviceInterface {
     this.transport = transport;
   }
 
-  public async queryState(timeoutMS = 500): Promise<ICompleteResponse> {
+  public async queryState(timeoutMS = 500): Promise<IFetchStateResponse> {
     const response = await this.transport.requestState(timeoutMS);
-    const completeResponse = bufferToCompleteResponse(response);
-
-    return completeResponse;
+    const fetchStateResponse: IFetchStateResponse = bufferToFetchStateResponse(response);
+    return fetchStateResponse;
   }
 
-  public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions = DEFAULT_COMMAND_OPTIONS): Promise<ICompleteResponse | void> {
+  public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions = DEFAULT_COMMAND_OPTIONS): Promise<ICompleteResponse> {
     this.abort(); // Cancel any previous command
     this.cancellationToken = { isCancelled: false }; // Reset the cancellation token
     this.cancellationEmitter.removeAllListeners(); // Clear any previous cancellation listeners
 
     await this.sendCommandToTransport(deviceCommand, commandOptions);
-    const result: ICompleteResponse | void = await this.processCommand(deviceCommand, commandOptions, this.cancellationToken);
+    const result: ICompleteResponse = await this.processCommand(deviceCommand, commandOptions, this.cancellationToken);
     return result;
   }
 
-  private async processCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions, cancellationToken: CancellationToken): Promise<ICompleteResponse | void> {
-    let response: ICompleteResponse = null;
+  private async processCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions, cancellationToken: CancellationToken): Promise<ICompleteResponse> {
+    let fetchStateResponse: IFetchStateResponse = null;
     let isValidState = false;
     let retryCount = commandOptions.maxRetries || 0;
 
@@ -53,12 +53,12 @@ export class DeviceInterface {
       if (cancellationToken.isCancelled) return; // Exit if this command has been cancelled
 
       try {
-        response = await this.queryState(500);
+        fetchStateResponse = await this.queryState(500);
       } catch (error) {
         retryCount--;
         continue;
       }
-      isValidState = isStateEqual(deviceCommand, response, commandOptions.commandType);
+      isValidState = isStateEqual(deviceCommand, fetchStateResponse, commandOptions.commandType);
 
       if (!isValidState) {
         await this.sendCommandToTransport(deviceCommand, commandOptions);
@@ -68,10 +68,10 @@ export class DeviceInterface {
     }
 
     if (!isValidState) {
-      throw new Error(`Invalid state after ${commandOptions.maxRetries} retries`);
+      throw new MHError(null, {fetchStateResponse, commandOptions, deviceCommand, responseMsg: `Invalid state after ${commandOptions.maxRetries} retries`}, ErrorType.INCORRECT_DEVICE_STATE_ERROR); 
     }
-    mergeDeep(response, {deviceCommand, commandOptions, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount} retries`});
-    return response;
+    const completeResponse:ICompleteResponse = mergeDeep<ICompleteResponse>({}, {fetchStateResponse, responseCode: 1 ,commandOptions, deviceCommand, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries` });
+    return completeResponse;
   }
 
   private async sendCommandToTransport(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {

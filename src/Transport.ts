@@ -26,12 +26,6 @@ export class Transport {
       timeout: SOCKET_TIMEOUT_MS,
     };
 
-    //we need to handle the error event, otherwise it will throw an exception
-    //currently it is not possible to catch this exception. To fix it we must use
-    //the async version of connect and handle the exception there. The way to do it is as follows:
-
-
-
     this.socket.on("error", () => {
     });
 
