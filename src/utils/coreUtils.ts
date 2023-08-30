@@ -26,7 +26,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
             //construct the color command byte array
 
 
-            if (!colorMask) colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
+            if (!colorMask) deviceCommand.colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
 
             if (commandOptions.isEightByteProtocol) {
                 commandByteArray = [0x31, red, green, blue, warmWhite, colorMask, 0x0F]; //8th byte checksum calculated later in send()
@@ -48,7 +48,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
            //test for bad or insufficient data?
             //construct the color command byte array
 
-            if (!colorMask) colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
+            if (!colorMask) deviceCommand.colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
 
             if (commandOptions.isEightByteProtocol) {
                 commandByteArray = [0x31, red, green, blue, warmWhite, colorMask, 0x0F]; //8th byte checksum calculated later in send()

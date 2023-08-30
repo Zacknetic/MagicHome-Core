@@ -1,5 +1,5 @@
 import { DEFAULT_COMPLETE_RESPONSE, ICompleteResponse, ErrorType, ErrorMessages} from "../types";
-import { mergeDeep } from "./miscUtils";
+import { combineDeep, mergeDeep } from "./miscUtils";
 
 export class MHError extends Error {
   completeResponse: ICompleteResponse;
@@ -15,6 +15,6 @@ export class MHError extends Error {
 }
 
 export function generateCompleteResponse(partialResponse: Partial<ICompleteResponse>): ICompleteResponse {
-  const completeResponse: ICompleteResponse = mergeDeep<ICompleteResponse>({}, {...DEFAULT_COMPLETE_RESPONSE, ...partialResponse});
+  const completeResponse: ICompleteResponse = combineDeep<ICompleteResponse>(DEFAULT_COMPLETE_RESPONSE, partialResponse);
   return completeResponse;
 }

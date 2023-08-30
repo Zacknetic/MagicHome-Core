@@ -3,7 +3,7 @@ import { ICommandOptions, IDeviceCommand, ICompleteResponse, DEFAULT_COMMAND_OPT
 import { EventEmitter } from "events";
 import { Transport } from "./Transport";
 import { commandToByteArray, isStateEqual } from "./utils/coreUtils";
-import { bufferFromByteArray, bufferToFetchStateResponse, mergeDeep } from "./utils/miscUtils";
+import { bufferFromByteArray, bufferToFetchStateResponse, combineDeep, mergeDeep } from "./utils/miscUtils";
 import { MHError } from "./utils/MHResponses";
 
 type CancellationToken = {
@@ -12,13 +12,12 @@ type CancellationToken = {
 };
 
 export class DeviceInterface {
+  
   private cancellationEmitter: EventEmitter = new EventEmitter();
 
-  protected transport: Transport;
   private cancellationToken: CancellationToken = { isCancelled: false };
 
-  constructor(transport: Transport) {
-    this.transport = transport;
+  constructor(private transport: Transport) {
   }
 
   public async queryState(timeoutMS = 500): Promise<IFetchStateResponse> {
@@ -70,7 +69,7 @@ export class DeviceInterface {
     if (!isValidState) {
       throw new MHError(null, {fetchStateResponse, commandOptions, deviceCommand, responseMsg: `Invalid state after ${commandOptions.maxRetries} retries`}, ErrorType.INCORRECT_DEVICE_STATE_ERROR); 
     }
-    const completeResponse:ICompleteResponse = mergeDeep<ICompleteResponse>({}, {fetchStateResponse, responseCode: 1 ,commandOptions, deviceCommand, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries` });
+    const completeResponse:ICompleteResponse = combineDeep<ICompleteResponse>({}, {fetchStateResponse, responseCode: 1 ,commandOptions, deviceCommand, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries` });
     return completeResponse;
   }
 

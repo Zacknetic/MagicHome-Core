@@ -1,5 +1,5 @@
 import { DeviceInterface } from "./DeviceInterface";
-import { mergeDeep } from "./utils/miscUtils";
+import { cloneDeep } from "./utils/miscUtils";
 
 export interface IProtoDevice {
   readonly ipAddress: string;
@@ -158,14 +158,14 @@ export const DEFAULT_CCT: IColorCCT = {
 
 export const DEVICE_STATE_DEFAULTS: IDeviceState = {
   isOn: false,
-  RGB: mergeDeep({}, DEFAULT_RGB),
-  CCT: mergeDeep({}, DEFAULT_CCT),
+  RGB: cloneDeep(DEFAULT_RGB),
+  CCT: cloneDeep(DEFAULT_CCT),
 };
 
 export const DEFAULT_COMMAND: IDeviceCommand = {
   isOn: true,
-  RGB: mergeDeep<IColorRGB>({}, DEFAULT_RGB),
-  CCT: mergeDeep({}, DEFAULT_CCT),
+  RGB: cloneDeep(DEFAULT_RGB),
+  CCT: cloneDeep(DEFAULT_CCT),
 };
 
 export const DEFAULT_DEVICE_METADATA: IDeviceMetaData = {
@@ -188,7 +188,7 @@ export const DEFAULT_COMPLETE_RESPONSE: ICompleteResponse = {
 export const DEFAULT_COMMAND_OPTIONS: ICommandOptions = {
   timeoutMS: 50,
   bufferMS: 50,
-  colorAssist: false,
+  colorAssist: true,
   commandType: COMMAND_TYPE.COLOR_COMMAND,
   waitForResponse: true,
   maxRetries: 5,

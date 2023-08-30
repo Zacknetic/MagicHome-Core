@@ -1,6 +1,6 @@
 export { discoverDevices, completeDevices } from './DeviceDiscovery';
 export { DeviceInterface } from './DeviceInterface';
-export { mergeDeep, overwriteDeep } from './utils/miscUtils';
+export { mergeDeep, combineDeep, cloneDeep } from './utils/miscUtils';
 export { isStateEqual } from './utils/coreUtils';
 export * from './types';
 

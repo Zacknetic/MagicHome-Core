@@ -3,7 +3,7 @@ import { Network } from "./Network";
 import { DeviceInterface } from "./DeviceInterface";
 import { Transport } from "./Transport";
 import { IProtoDevice, ICompleteDevice, ICompleteResponse, ICompleteDeviceInfo, DEFAULT_COMPLETE_RESPONSE, IFetchStateResponse } from "./types";
-import { mergeDeep, sleepTimeout } from "./utils/miscUtils";
+import { mergeDeep, cloneDeep, combineDeep, sleepTimeout } from "./utils/miscUtils";
 import { generateCompleteResponse } from "./utils/MHResponses";
 
 const BROADCAST_PORT: number = 48899;
@@ -69,7 +69,12 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
  */
 
 export async function completeDevices(protoDevices: IProtoDevice[], timeout = 500, retries = 3): Promise<ICompleteDevice[]> {
-  if (protoDevices.length < 1) return;
+  //there is a potential bug here where if protodevices doesn't exist it will throw an error.
+  //to fix it we need to check if protodevices exists before we do anything else.
+  //this is how
+  //if (!protoDevices) return;
+  if (!protoDevices || protoDevices.length < 1) return;
+
   const deviceResponses: Promise<ICompleteDevice>[] = [];
   const completedDevices: ICompleteDevice[] = [];
   const retryProtoDevices: IProtoDevice[] = [];
@@ -129,7 +134,7 @@ export function completeCustomDevices(completeDevicesInfo: ICompleteDeviceInfo[]
     const transport = new Transport(ipAddress);
     const deviceInterface = new DeviceInterface(transport);
 
-    const completeResponse: ICompleteResponse = mergeDeep<ICompleteResponse>({}, DEFAULT_COMPLETE_RESPONSE);
+    const completeResponse: ICompleteResponse = cloneDeep(DEFAULT_COMPLETE_RESPONSE);
     const completeDevice: ICompleteDevice = { completeDeviceInfo, deviceInterface, completeResponse };
     completeDevices.push(completeDevice);
   }
