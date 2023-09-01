@@ -26,6 +26,9 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
   const socket: dgram.Socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
 
   socket.bind(BROADCAST_PORT);
+  console.log("[deviceDiscovery] socket: \n", socket);
+
+  
 
   socket.on("error", (err) => {
     console.log("[deviceDiscovery] error: \n", err)
@@ -42,6 +45,8 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
   });
 
   socket.on("message", (msg, rinfo) => {
+    console.log("[deviceDiscovery] message: \n", msg.toString() + "\nrinfo: \n", rinfo)
+
     const address = rinfo.address;
     const parts = msg.toString().split(",");
     if (parts.length !== 3) return;
@@ -54,9 +59,6 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
       uniqueId,
       modelNumber,
     });
-
-    console.log("[deviceDiscovery] message: \n", msg.toString() + "\nrinfo: \n", rinfo)
-
   });
 
   await sleepTimeout(timeout).catch((e) => {
