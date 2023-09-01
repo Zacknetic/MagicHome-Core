@@ -20,7 +20,7 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
     }
     userInterfaces.push(...customSubnets);
   }
-
+  console.log("[deviceDiscovery] userInterfaces: \n", userInterfaces)
   const protoDevicesSet = new Set<string>();
   const protoDevicesList: IProtoDevice[] = [];
   const socket: dgram.Socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
@@ -28,11 +28,13 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
   socket.bind(BROADCAST_PORT);
 
   socket.on("error", (err) => {
+    console.log("[deviceDiscovery] error: \n", err)
     socket.close();
     return err;
   });
 
   socket.on("listening", () => {
+    console.log("[deviceDiscovery] listening")
     socket.setBroadcast(true);
     for (const userInterface of userInterfaces) {
       socket.send(BROADCAST_MAGIC_STRING, BROADCAST_PORT, userInterface);
@@ -52,6 +54,9 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
       uniqueId,
       modelNumber,
     });
+
+    console.log("[deviceDiscovery] message: \n", msg.toString() + "\nrinfo: \n", rinfo)
+
   });
 
   await sleepTimeout(timeout).catch((e) => {
