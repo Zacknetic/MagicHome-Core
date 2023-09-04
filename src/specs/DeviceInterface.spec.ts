@@ -1,4 +1,5 @@
 // import { DeviceInterface } from '../DeviceInterface'
+// import { discoverDevices } from '../DeviceDiscovery';
 // import { ICommandOptions, IDeviceCommand } from '../types';
 // import * as types from '../types'
 // import { Transport } from '../Transport';
@@ -15,6 +16,8 @@
 //     transport = new Transport('192.168.50.137');
 //     deviceInterface = new DeviceInterface(transport);
 // });
+
+
 
 
 

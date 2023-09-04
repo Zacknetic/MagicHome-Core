@@ -1,6 +1,6 @@
 {
   "name": "magichome-core",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "discover, control, and receive status for MagicHome devices",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
