@@ -1,5 +1,5 @@
 export { discoverDevices, generateCompleteDevices, generateInterface } from './DeviceDiscovery';
-export { DeviceInterface } from './DeviceInterface';
+export { DeviceManager } from './DeviceManager';
 export { mergeDeep, combineDeep, cloneDeep } from './utils/miscUtils';
 export { isStateEqual } from './utils/coreUtils';
 export * from './types';

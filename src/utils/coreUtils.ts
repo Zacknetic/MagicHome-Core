@@ -1,5 +1,5 @@
 import * as types from '../types';
-import { ColorCommandArray, ICommandOptions, IDeviceCommand, IFetchStateResponse, StateCommandArray } from '../types'
+import { ColorCommandArray, CommandOptions, DeviceCommand, FetchStateResponse, StateCommandArray } from '../types'
 import { deepEqual } from './miscUtils';
 import { CommandType, ColorMask } from '../types';
 const {
@@ -14,7 +14,7 @@ const {
  * @returns ColorCommandArray | StateCommandArray
  * 
  */
-export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): ColorCommandArray | StateCommandArray {
+export function commandToByteArray(deviceCommand: DeviceCommand, commandOptions: CommandOptions): ColorCommandArray | StateCommandArray {
     let commandByteArray: ColorCommandArray | StateCommandArray;
 
     switch (commandOptions.commandType) {
@@ -48,7 +48,7 @@ export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions
     return commandByteArray;
 }
 
-function constructColorCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): ColorCommandArray {
+function constructColorCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): ColorCommandArray {
     let commandByteArray: ColorCommandArray;
     const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
 
@@ -66,7 +66,7 @@ function constructColorCommand(deviceCommand: IDeviceCommand, commandOptions: IC
     return commandByteArray;
 }
 
-export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: IFetchStateResponse, commandType: CommandType): boolean {
+export function isStateEqual(deviceCommand: DeviceCommand, deviceResponse: FetchStateResponse, commandType: CommandType): boolean {
 
     const { deviceState } = deviceResponse;
     if (deviceState.isOn == false && deviceCommand.isOn == false) return true;

@@ -1,4 +1,4 @@
-import { ICommandOptions, IDeviceCommand, ICompleteResponse, IFetchStateResponse, ErrorType, IInterfaceOptions } from "./types";
+import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, ErrorType, InterfaceOptions } from "./types";
 
 import { EventEmitter } from "events";
 import { Transport } from "./Transport";
@@ -11,32 +11,32 @@ type CancellationToken = {
   cancel?: () => void;
 };
 
-export class DeviceInterface {
+export class DeviceManager {
 
   private cancellationEmitter: EventEmitter = new EventEmitter();
 
   private cancellationToken: CancellationToken = { isCancelled: false };
 
-  constructor(private transport: Transport, private interfaceOptions: IInterfaceOptions) { }
+  constructor(private transport: Transport, private interfaceOptions: InterfaceOptions) { }
 
-  public async queryState(): Promise<IFetchStateResponse> {
+  public async queryState(): Promise<FetchStateResponse> {
     const response = await this.transport.requestState(this.interfaceOptions.timeoutMS);
-    const fetchStateResponse: IFetchStateResponse = bufferToFetchStateResponse(response);
+    const fetchStateResponse: FetchStateResponse = bufferToFetchStateResponse(response);
     return fetchStateResponse;
   }
 
-  public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse> {
+  public async sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse> {
     this.abort(); // Cancel any previous command
     this.cancellationToken = { isCancelled: false }; // Reset the cancellation token
     this.cancellationEmitter.removeAllListeners(); // Clear any previous cancellation listeners
 
     await this.sendCommandToTransport(deviceCommand, commandOptions);
-    const result: ICompleteResponse = await this.processCommand(deviceCommand, commandOptions, this.cancellationToken);
+    const result: CompleteResponse = await this.processCommand(deviceCommand, commandOptions, this.cancellationToken);
     return result;
   }
 
-  private async processCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions, cancellationToken: CancellationToken): Promise<ICompleteResponse> {
-    let fetchStateResponse: IFetchStateResponse = null;
+  private async processCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions, cancellationToken: CancellationToken): Promise<CompleteResponse> {
+    let fetchStateResponse: FetchStateResponse = null;
     let isValidState = false;
     let retryCount = commandOptions.maxRetries || 0;
 
@@ -68,11 +68,11 @@ export class DeviceInterface {
     if (!isValidState) {
       throw new MHError(null, { fetchStateResponse, initialCommandOptions: commandOptions, initialDeviceCommand: deviceCommand, responseMsg: `Invalid state after ${commandOptions.maxRetries} retries` }, ErrorType.INCORRECT_DEVICE_STATE_ERROR);
     }
-    const completeResponse: ICompleteResponse = combineDeep<ICompleteResponse>({}, { fetchStateResponse, responseCode: 1, initialCommandOptions: commandOptions, initialDeviceCommand: deviceCommand, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries` });
+    const completeResponse: CompleteResponse = combineDeep<CompleteResponse>({}, { fetchStateResponse, responseCode: 1, initialCommandOptions: commandOptions, initialDeviceCommand: deviceCommand, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries` });
     return completeResponse;
   }
 
-  private async sendCommandToTransport(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions) {
+  private async sendCommandToTransport(deviceCommand: DeviceCommand, commandOptions: CommandOptions) {
     const byteArray = commandToByteArray(deviceCommand, commandOptions);
     await this.transport.send(byteArray);
   }

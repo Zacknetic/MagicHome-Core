@@ -1,16 +1,14 @@
 import * as dgram from 'dgram';
 import * as net from 'net';
 import { Network } from './Network';
-import { DeviceInterface } from './DeviceInterface';
+import { DeviceManager } from './DeviceManager';
 import { Transport } from './Transport';
 import {
-	IProtoDevice,
-	ICompleteDevice,
-	ICompleteResponse,
-	ICompleteDeviceInfo,
-	DEFAULT_COMPLETE_RESPONSE,
-	IFetchStateResponse,
-	IInterfaceOptions,
+	ProtoDevice,
+	CompleteDevice,
+	CompleteResponse,
+	FetchStateResponse,
+	InterfaceOptions,
 } from './types';
 import {
 	mergeDeep,
@@ -24,7 +22,7 @@ const BROADCAST_PORT: number = 48899;
 const BROADCAST_MAGIC_STRING: string = 'HF-A11ASSISTHREAD';
 
 let testCounter = 0;
-export async function discoverDevices(timeout = 1000, customSubnets: string[] = []): Promise<IProtoDevice[]> {
+export async function discoverDevices(timeout = 1000, customSubnets: string[] = []): Promise<ProtoDevice[]> {
 	const userInterfaces: string[] = [];
 
 	if (isDockerHostMode()) {
@@ -37,7 +35,7 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
 	}
 
 	const protoDevicesSet = new Set<string>();
-	const protoDevicesList: IProtoDevice[] = [];
+	const protoDevicesList: ProtoDevice[] = [];
 	const socket: dgram.Socket = dgram.createSocket({
 		type: 'udp4',
 		reuseAddr: true,
@@ -87,20 +85,20 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
  */
 
 export async function generateCompleteDevices(
-	protoDevices: IProtoDevice[],
-	interfaceOptions: IInterfaceOptions,
+	protoDevices: ProtoDevice[],
+	interfaceOptions: InterfaceOptions,
 	retries = 3
-): Promise<ICompleteDevice[]> {
+): Promise<CompleteDevice[]> {
 
 	if (!protoDevices || protoDevices.length < 1) return;
 
-	const deviceResponses: Promise<ICompleteDevice>[] = [];
-	const completedDevices: ICompleteDevice[] = [];
-	const retryProtoDevices: IProtoDevice[] = [];
+	const deviceResponses: Promise<CompleteDevice>[] = [];
+	const completedDevices: CompleteDevice[] = [];
+	const retryProtoDevices: ProtoDevice[] = [];
 
 	protoDevices.forEach((protoDevice) => {
 		deviceResponses.push(
-			completeDevice(protoDevice, interfaceOptions).catch((e) => {
+			generateCompleteDevice(protoDevice, interfaceOptions).catch((e) => {
 				throw Error('DeviceDiscoveryError: ' + e);
 			})
 		);
@@ -124,61 +122,31 @@ export async function generateCompleteDevices(
 	return completedDevices;
 }
 
-async function completeDevice(protoDevice: IProtoDevice, interfaceOptions: IInterfaceOptions): Promise<ICompleteDevice> {
+async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions: InterfaceOptions): Promise<CompleteDevice> {
 	try {
 		const transport = new Transport(protoDevice.ipAddress);
-		const deviceInterface = new DeviceInterface(transport, interfaceOptions);
+		const deviceManager = new DeviceManager(transport, interfaceOptions);
 		
-		const fetchStateResponse: IFetchStateResponse = await deviceInterface.queryState();
-		const completeDeviceInfo: ICompleteDeviceInfo = {
-			deviceMetaData: fetchStateResponse.deviceMetaData,
+		const fetchStateResponse: FetchStateResponse = await deviceManager.queryState();
+		
+		const completeDevice: CompleteDevice = {
 			protoDevice,
+			fetchStateResponse,
 			latestUpdate: Date.now(),
 		};
-		const completeResponse: ICompleteResponse = generateCompleteResponse({
-			fetchStateResponse,
-			responseCode: 1,
-			initialDeviceCommand: null,
-			responseMsg: 'completeDevice',
-		});
-		const completeDevice: ICompleteDevice = {
-			completeResponse,
-			completeDeviceInfo,
-		};
+
 		return completeDevice;
 	} catch (e) {
 		throw Error('completeDeviceError: ' + e);
 	}
 }
 
-/**
- * @param protoDevices IProtoDevice[]
- * @param timeout number
- * @returns completeDevice[]
- */
-export function completeCustomDevices(completeDevicesInfo: ICompleteDeviceInfo[]): ICompleteDevice[] {
-	const completeDevices: ICompleteDevice[] = [];
 
-	for (const completeDeviceInfo of completeDevicesInfo) {
-
-		const completeResponse: ICompleteResponse = cloneDeep(
-			DEFAULT_COMPLETE_RESPONSE
-		);
-		const completeDevice: ICompleteDevice = {
-			completeDeviceInfo,
-			completeResponse,
-		};
-		completeDevices.push(completeDevice);
-	}
-
-	return completeDevices;
+export function generateInterface(ipAddress: string, timeoutMS: number): DeviceManager {
+	const transport = new Transport(ipAddress);
+	return new DeviceManager(transport, { timeoutMS });
 }
 
 function isDockerHostMode(): boolean {
 	return !!process.env.DOCKER_HOST_NETWORK;
-}
-
-export function generateInterface(ipAddress: string, timeoutMS: number): DeviceInterface {
-	const transport = new Transport(ipAddress);
-	return new DeviceInterface(transport, { timeoutMS });
 }

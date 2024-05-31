@@ -1,4 +1,4 @@
-// import { DeviceInterface } from '../DeviceInterface'
+// import { DeviceManager } from '../DeviceManager'
 // import { discoverDevices } from '../DeviceDiscovery';
 // import { ICommandOptions, IDeviceCommand } from '../types';
 // import * as types from '../types'
@@ -10,11 +10,11 @@
 
 
 
-// let deviceInterface;
+// let deviceManager;
 // let transport;
 // beforeEach(async () => {
 //     transport = new Transport('192.168.50.137');
-//     deviceInterface = new DeviceInterface(transport);
+//     deviceManager = new DeviceManager(transport);
 // });
 
 
@@ -22,7 +22,7 @@
 
 
 
-// describe('Test the DeviceInterface class', () => {
+// describe('Test the DeviceManager class', () => {
 
 
 
@@ -33,7 +33,7 @@
 
 //         let deviceCommand = { isOn: true, RGB: { red: 255, green: 0, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: 0xF0 };
 
-//         deviceInterface.sendCommand(deviceCommand, commandOptions)
+//         deviceManager.sendCommand(deviceCommand, commandOptions)
 //             .then((returnValue: types.ICompleteResponse) => {
 //                 console.log('return value: ', returnValue);
 //             }).catch(err => {

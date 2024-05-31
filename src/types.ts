@@ -1,28 +1,59 @@
-import { DeviceInterface } from "./DeviceInterface";
+import { DeviceManager } from "./DeviceManager";
 import { cloneDeep } from "./utils/miscUtils";
 
-export interface IProtoDevice {
+export type ProtoDevice = {
   readonly ipAddress: string;
   readonly uniqueId: string;
   readonly modelNumber: string;
 }
 
-export interface ICompleteDeviceInfo {
-  protoDevice: IProtoDevice;
-  deviceMetaData: IDeviceMetaData;
+export type CompleteDevice = {
+  protoDevice: ProtoDevice;
+  fetchStateResponse: FetchStateResponse;
   latestUpdate: number;
 }
 
-export interface ICompleteDevice {
-  completeDeviceInfo: ICompleteDeviceInfo;
-  completeResponse: ICompleteResponse;
-}
+export type DeviceBundle = {
+	completeDevice: CompleteDevice;
+	deviceManager: DeviceManager;
+};
 
-export interface IInterfaceOptions {
+export type InterfaceOptions = {
   readonly timeoutMS: number;
 }
 
-export interface ICommandOptions {
+export type ColorRGB = {
+  red: number;
+  green: number;
+  blue: number;
+}
+
+export type IColorCCT = {
+  warmWhite: number;
+  coldWhite: number;
+}
+
+export type CompleteResponse = {
+  fetchStateResponse: FetchStateResponse;
+  initialDeviceCommand: DeviceCommand;
+  initialCommandOptions: CommandOptions;
+  responseCode: number;
+  responseMsg?: string;
+}
+
+export type FetchStateResponse = {
+  deviceState: DeviceState;
+  deviceMetaData: DeviceMetaData;
+}
+
+export type DeviceCommand = {
+  isOn: boolean;
+  RGB: ColorRGB;
+  CCT: IColorCCT;
+  colorMask?: number;
+}
+
+export type CommandOptions = {
   readonly colorAssist: boolean;
   readonly commandType: CommandType;
   readonly isEightByteProtocol: boolean;
@@ -30,55 +61,24 @@ export interface ICommandOptions {
   readonly maxRetries: number;
 }
 
-export interface IDeviceCommand {
+export type DeviceState = {
   isOn: boolean;
-  RGB: IColorRGB;
-  CCT: IColorCCT;
-  colorMask?: number;
-}
-
-export interface IColorRGB {
-  red: number;
-  green: number;
-  blue: number;
-}
-
-export interface IColorCCT {
-  warmWhite: number;
-  coldWhite: number;
-}
-
-export interface ICompleteResponse {
-  fetchStateResponse: IFetchStateResponse;
-  initialDeviceCommand: IDeviceCommand;
-  initialCommandOptions: ICommandOptions;
-  responseCode: number;
-  responseMsg?: string;
-}
-
-export interface IFetchStateResponse {
-  deviceState: IDeviceState;
-  deviceMetaData: IDeviceMetaData;
-}
-
-export interface IDeviceState {
-  isOn: boolean;
-  RGB: IColorRGB;
+  RGB: ColorRGB;
   CCT: IColorCCT;
 }
 
-export interface IDeviceMetaData {
+export type DeviceMetaData = {
   readonly controllerHardwareVersion: number;
   readonly controllerFirmwareVersion: number;
   readonly rawData: Buffer;
 }
 
-export interface ITransportResponse {
+export type TransportResponse = {
   responseCode: number;
   responseMsg: Buffer;
 }
 
-export interface IQueueOptions {
+export type IQueueOptions = {
   timeout?: number;
   autoStart?: boolean;
   interval?: number;
@@ -134,7 +134,7 @@ export enum ColorMask {
   BOTH = 0xff,
 };
 
-export const DEFAULT_RGB: IColorRGB = {
+export const DEFAULT_RGB: ColorRGB = {
   red: 0,
   green: 0,
   blue: 0,
@@ -145,25 +145,25 @@ export const DEFAULT_CCT: IColorCCT = {
   coldWhite: 0,
 };
 
-export const DEVICE_STATE_DEFAULTS: IDeviceState = {
+export const DEVICE_STATE_DEFAULTS: DeviceState = {
   isOn: false,
   RGB: cloneDeep(DEFAULT_RGB),
   CCT: cloneDeep(DEFAULT_CCT),
 };
 
-export const DEFAULT_COMMAND: IDeviceCommand = {
+export const DEFAULT_COMMAND: DeviceCommand = {
   isOn: true,
   RGB: cloneDeep(DEFAULT_RGB),
   CCT: cloneDeep(DEFAULT_CCT),
 };
 
-export const DEFAULT_DEVICE_METADATA: IDeviceMetaData = {
+export const DEFAULT_DEVICE_METADATA: DeviceMetaData = {
   controllerFirmwareVersion: null,
   controllerHardwareVersion: null,
   rawData: null,
 };
 
-export const DEFAULT_COMPLETE_RESPONSE: ICompleteResponse = {
+export const DEFAULT_COMPLETE_RESPONSE: CompleteResponse = {
   responseCode: null,
   initialDeviceCommand: null,
   fetchStateResponse: {
@@ -200,20 +200,20 @@ export const DEFAULT_COMPLETE_RESPONSE: ICompleteResponse = {
 
 /*******************************MOCK SETTINGS****************** */
 
-export interface IMockDeviceSettings {
-  deviceState: IDeviceState;
-  controllerHardwareVersion: number;
-  controllerFirmwareVersion: number;
-  responseTimeMS: number;
-}
+// export interface IMockDeviceSettings {
+//   deviceState: IDeviceState;
+//   controllerHardwareVersion: number;
+//   controllerFirmwareVersion: number;
+//   responseTimeMS: number;
+// }
 
-export interface IMockCommandSettings {
-  responseTimeMS: number;
-  numFailures: number;
-}
+// export interface IMockCommandSettings {
+//   responseTimeMS: number;
+//   numFailures: number;
+// }
 
-export interface IMockLEDState {
-  isOn: boolean;
-  RGB: IColorRGB;
-  CCT: IColorCCT;
-}
+// export interface IMockLEDState {
+//   isOn: boolean;
+//   RGB: IColorRGB;
+//   CCT: IColorCCT;
+// }

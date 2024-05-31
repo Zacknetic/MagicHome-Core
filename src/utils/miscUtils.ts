@@ -1,4 +1,4 @@
-import { IFetchStateResponse } from '../types';
+import { FetchStateResponse } from '../types';
 
 /**
  * @param data Buffer
@@ -20,11 +20,11 @@ import { IFetchStateResponse } from '../types';
  *   }
  * }
  */
-export function bufferToFetchStateResponse(data: Buffer): IFetchStateResponse {
+export function bufferToFetchStateResponse(data: Buffer): FetchStateResponse {
 	if (!Buffer.isBuffer(data) || data.length < 14)
 		throw new Error('Invalid buffer' + data.toString('hex'));
 
-	const fetchStateResponse: IFetchStateResponse = {
+	const fetchStateResponse: FetchStateResponse = {
 		deviceState: {
 			isOn: data.readUInt8(2) === 0x23,
 			RGB: {

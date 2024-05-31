@@ -1,6 +1,6 @@
-import { DeviceInterface } from './DeviceInterface';
+import { DeviceManager } from './DeviceManager';
 import { Transport } from './Transport';
-import { CommandType, ICommandOptions, IDeviceCommand, IFetchStateResponse } from './types';
+import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse } from './types';
 import { bufferFromByteArray } from './utils/checksum';
 import { commandToByteArray, isStateEqual } from './utils/coreUtils';
 import { bufferToFetchStateResponse } from './utils/miscUtils';
@@ -9,24 +9,24 @@ const COMMAND_QUERY_STATE = bufferFromByteArray([0x81, 0x8a, 0x8b]);
 const REPEAT_TIMES = 1000;
 class TestQueryState {
   private transport: Transport;
-  // private deviceInterface: DeviceInterface;
+  // private deviceManager: DeviceManager;
   constructor(ipAddress: string) {
     this.transport = new Transport(ipAddress);
-    // this.deviceInterface = new DeviceInterface(this.transport);
+    // this.deviceManager = new DeviceManager(this.transport);
 
   }
 
   public async testResponseTime(times: number): Promise<void> {
 
     const responseTimes: number[] = [];
-    const commandOptions: ICommandOptions = {
+    const commandOptions: CommandOptions = {
       colorAssist: true,
       isEightByteProtocol: false,
       commandType: CommandType.COLOR,
       waitForResponse: true,
       maxRetries: 5,
     };
-    let command: IDeviceCommand;
+    let command: DeviceCommand;
     for (let i = 0; i < 100; i++) {
       const randomRed = Math.floor(Math.random() * 256);
       const randomGreen = Math.floor(Math.random() * 256);
@@ -46,7 +46,7 @@ class TestQueryState {
 
       try {
         const data = await this.transport.requestState(1000);
-        const fetchStateResponse: IFetchStateResponse = bufferToFetchStateResponse(data);
+        const fetchStateResponse: FetchStateResponse = bufferToFetchStateResponse(data);
         const isValidState = isStateEqual(command, fetchStateResponse, commandOptions.commandType);
 
         const elapsedTime = process.hrtime(startTime);

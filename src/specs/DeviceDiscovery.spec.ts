@@ -1,4 +1,4 @@
-// // import { DeviceInterface } from '../DeviceInterface'
+// // import { DeviceManager } from '../DeviceManager'
 // // import { ICommandOptions, ICommandResponse, IDeviceCommand } from '../types';
 
 // import assert = require('assert');
@@ -28,13 +28,13 @@
 // 		for (const completedDevice of completedDevices) {
 // 			console.log('CompleteDevice Info: ', completedDevice.completeDeviceInfo);
 // 			console.log('Complete Response: ', completedDevice.completeResponse);
-// 			console.log('Device Interface: ', completedDevice.deviceInterface);
+// 			console.log('Device Interface: ', completedDevice.deviceManager);
 // 		}
 
 // 		assert.strictEqual(protoDevices.length, completedDevices.length);
 // 	});
 
-// 	describe('Test the DeviceInterface send function for eight byte protocol devices', () => {
+// 	describe('Test the DeviceManager send function for eight byte protocol devices', () => {
 // 		it('Should set light state to red for each eight byte protocol device.', async function () {
 // 			const commandOptions: ICommandOptions = {
 // 				colorAssist: false,
@@ -58,7 +58,7 @@
 // 			const promises = completedDevices.map(async (device) => {
 // 				try {
 // 					const returnValue: types.ICompleteResponse | void =
-// 						await device.deviceInterface.sendCommand(
+// 						await device.deviceManager.sendCommand(
 // 							deviceCommand,
 // 							commandOptions
 // 						);
@@ -76,7 +76,7 @@
 // 		});
 // 	});
 
-// 	describe('Test the DeviceInterface send function for non-eight byte protocol devices', () => {
+// 	describe('Test the DeviceManager send function for non-eight byte protocol devices', () => {
 // 		it('Should set light state to red for each non-eight byte protocol device.', async function () {
 // 			const commandOptions: ICommandOptions = {
 // 				colorAssist: false,
@@ -100,7 +100,7 @@
 // 			const promises = completedDevices.map(async (device) => {
 // 				try {
 // 					const returnValue: types.ICompleteResponse | void =
-// 						await device.deviceInterface.sendCommand(
+// 						await device.deviceManager.sendCommand(
 // 							deviceCommand,
 // 							commandOptions
 // 						);
