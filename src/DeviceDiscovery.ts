@@ -9,6 +9,7 @@ import {
 	CompleteResponse,
 	FetchStateResponse,
 	InterfaceOptions,
+	DeviceBundle,
 } from './types';
 import {
 	mergeDeep,
@@ -83,59 +84,55 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
  * @param timeout number
  * @returns completeDevice[]
  */
-
 export async function generateCompleteDevices(
 	protoDevices: ProtoDevice[],
 	interfaceOptions: InterfaceOptions,
 	retries = 3
-): Promise<CompleteDevice[]> {
+): Promise<DeviceBundle[]> {
+	if (!protoDevices || protoDevices.length < 1) return [];
 
-	if (!protoDevices || protoDevices.length < 1) return;
+	const completedDevices: DeviceBundle[] = [];
+	let retryProtoDevices: ProtoDevice[] = [];
 
-	const deviceResponses: Promise<CompleteDevice>[] = [];
-	const completedDevices: CompleteDevice[] = [];
-	const retryProtoDevices: ProtoDevice[] = [];
-
-	protoDevices.forEach((protoDevice) => {
-		deviceResponses.push(
+	const results = await Promise.allSettled(
+		protoDevices.map(protoDevice =>
 			generateCompleteDevice(protoDevice, interfaceOptions).catch((e) => {
-				throw Error('DeviceDiscoveryError: ' + e);
+				console.error('DeviceDiscoveryError: ', e);
+				return Promise.reject({ protoDevice, error: e });
 			})
-		);
+		)
+	);
+
+	results.forEach(result => {
+		if (result.status === 'fulfilled') {
+			completedDevices.push(result.value);
+		} else if (result.reason && result.reason.protoDevice) {
+			retryProtoDevices.push(result.reason.protoDevice);
+		}
 	});
 
-	await Promise.allSettled(deviceResponses).then((results) => {
-		results.forEach((result) => {
-			if (result.status === 'fulfilled') completedDevices.push(result.value);
-			else retryProtoDevices.push(result.reason.protoDevice);
-		});
-	});
-	if (retryProtoDevices.length > 0 && retries > 0)
-		completedDevices.push(
-			...(await generateCompleteDevices(retryProtoDevices, interfaceOptions, retries - 1).catch(
-				(e) => {
-					throw Error('DeviceDiscoveryError: ' + e);
-				}
-			))
-		);
+	if (retryProtoDevices.length > 0 && retries > 0) {
+		const retriedDevices = await generateCompleteDevices(retryProtoDevices, interfaceOptions, retries - 1);
+		completedDevices.push(...retriedDevices);
+	}
 
 	return completedDevices;
 }
 
-async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions: InterfaceOptions): Promise<CompleteDevice> {
+async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions: InterfaceOptions): Promise<DeviceBundle> {
 	try {
 		const transport = new Transport(protoDevice.ipAddress);
 		const deviceManager = new DeviceManager(transport, interfaceOptions);
-		
+
 		const fetchStateResponse: FetchStateResponse = await deviceManager.queryState();
-		
+
 		const completeDevice: CompleteDevice = {
 			protoDevice,
 			fetchStateResponse,
 			latestUpdate: Date.now(),
 		};
 
-		return completeDevice;
+		return { completeDevice, deviceManager };
 	} catch (e) {
 		throw Error('completeDeviceError: ' + e);
 	}

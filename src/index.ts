@@ -11,13 +11,14 @@ import TestQueryState from './TestQueryState';
 
 const ipAddress = '192.168.50.238';  // Replace with the actual IP address of the device you want to test
 // const ipAddress = '192.168.50.137'
-const testTimes = 1000;
+const testTimes = 3;
 
 (async () => {
   const testQuery = new TestQueryState(ipAddress);
 
   try {
-    await testQuery.testResponseTime(testTimes);
+    // await testQuery.testResponseTimeTransport(testTimes);
+    await testQuery.testResponseTimeDeviceManager(testTimes);
   } catch (error) {
     console.error('Error during query state testing:', error);
   }

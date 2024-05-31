@@ -51,7 +51,7 @@ export function commandToByteArray(deviceCommand: DeviceCommand, commandOptions:
 function constructColorCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): ColorCommandArray {
     let commandByteArray: ColorCommandArray;
     const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
-
+    console.log("Color Command: ", deviceCommand, commandOptions)
     let newColorMask = colorMask;
 
     if (!colorMask) {

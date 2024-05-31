@@ -1,5 +1,4 @@
 import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, ErrorType, InterfaceOptions } from "./types";
-
 import { EventEmitter } from "events";
 import { Transport } from "./Transport";
 import { commandToByteArray, isStateEqual } from "./utils/coreUtils";
@@ -40,7 +39,7 @@ export class DeviceManager {
     let isValidState = false;
     let retryCount = commandOptions.maxRetries || 0;
 
-    while (!isValidState && retryCount > 0) {
+    while (!isValidState && retryCount > 0 && commandOptions.waitForResponse) {
       // Create a new cancellation promise for this iteration
       const cancellationPromise = new Promise<void>((resolve) => {
         cancellationToken.cancel = resolve; // Set the cancellation function
@@ -57,7 +56,6 @@ export class DeviceManager {
         continue;
       }
       isValidState = isStateEqual(deviceCommand, fetchStateResponse, commandOptions.commandType);
-
       if (!isValidState) {
         await this.sendCommandToTransport(deviceCommand, commandOptions);
       }

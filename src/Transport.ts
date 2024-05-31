@@ -37,7 +37,7 @@ export class Transport {
       this.startIdleTimer();
     } catch (e) {
       await this.disconnect(true);
-      throw Error("MHCore ConnectError: " + e);
+      throw new Error("MHCore ConnectError: " + e);
     }
   }
 
@@ -99,7 +99,7 @@ export class Transport {
       this.resetIdleTimer();
       return data;
     } catch (e) {
-      throw Error("MHCore requestState: " + e);
+      throw new Error("MHCore requestState: " + e);
     } finally {
       release();
     }

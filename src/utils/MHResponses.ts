@@ -7,10 +7,10 @@ export class MHError extends Error {
   constructor(originalError: Error, partialResponse: Partial<CompleteResponse>, code: ErrorType) {
     mergeDeep(partialResponse, { responseCode: code, responseMsg: ErrorMessages[code] });
     const completeResponse = generateCompleteResponse(partialResponse);
-    super(originalError.message);
-    this.name = originalError.name;
+    super(originalError?.message? originalError?.message : completeResponse.responseMsg);
+    this.name = originalError?.name;
     this.completeResponse = completeResponse;
-    this.stack = originalError.stack; // Preserving the original stack trace
+    this.stack = originalError?.stack; // Preserving the original stack trace
   }
 }
 
