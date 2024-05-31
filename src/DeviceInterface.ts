@@ -1,9 +1,9 @@
-import { ICommandOptions, IDeviceCommand, ICompleteResponse, DEFAULT_COMMAND_OPTIONS, IFetchStateResponse, DEFAULT_COMPLETE_RESPONSE, ErrorType } from "./types";
+import { ICommandOptions, IDeviceCommand, ICompleteResponse, IFetchStateResponse, ErrorType, IInterfaceOptions } from "./types";
 
 import { EventEmitter } from "events";
 import { Transport } from "./Transport";
 import { commandToByteArray, isStateEqual } from "./utils/coreUtils";
-import { bufferFromByteArray, bufferToFetchStateResponse, combineDeep, mergeDeep } from "./utils/miscUtils";
+import {  bufferToFetchStateResponse, combineDeep } from "./utils/miscUtils";
 import { MHError } from "./utils/MHResponses";
 
 type CancellationToken = {
@@ -12,21 +12,20 @@ type CancellationToken = {
 };
 
 export class DeviceInterface {
-  
+
   private cancellationEmitter: EventEmitter = new EventEmitter();
 
   private cancellationToken: CancellationToken = { isCancelled: false };
 
-  constructor(private transport: Transport) {
-  }
+  constructor(private transport: Transport, private interfaceOptions: IInterfaceOptions) { }
 
-  public async queryState(timeoutMS = 500): Promise<IFetchStateResponse> {
-    const response = await this.transport.requestState(timeoutMS);
+  public async queryState(): Promise<IFetchStateResponse> {
+    const response = await this.transport.requestState(this.interfaceOptions.timeoutMS);
     const fetchStateResponse: IFetchStateResponse = bufferToFetchStateResponse(response);
     return fetchStateResponse;
   }
 
-  public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions = DEFAULT_COMMAND_OPTIONS): Promise<ICompleteResponse> {
+  public async sendCommand(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): Promise<ICompleteResponse> {
     this.abort(); // Cancel any previous command
     this.cancellationToken = { isCancelled: false }; // Reset the cancellation token
     this.cancellationEmitter.removeAllListeners(); // Clear any previous cancellation listeners
@@ -52,7 +51,7 @@ export class DeviceInterface {
       if (cancellationToken.isCancelled) return; // Exit if this command has been cancelled
 
       try {
-        fetchStateResponse = await this.queryState(500);
+        fetchStateResponse = await this.queryState();
       } catch (error) {
         retryCount--;
         continue;
@@ -67,9 +66,9 @@ export class DeviceInterface {
     }
 
     if (!isValidState) {
-      throw new MHError(null, {fetchStateResponse, commandOptions, deviceCommand, responseMsg: `Invalid state after ${commandOptions.maxRetries} retries`}, ErrorType.INCORRECT_DEVICE_STATE_ERROR); 
+      throw new MHError(null, { fetchStateResponse, initialCommandOptions: commandOptions, initialDeviceCommand: deviceCommand, responseMsg: `Invalid state after ${commandOptions.maxRetries} retries` }, ErrorType.INCORRECT_DEVICE_STATE_ERROR);
     }
-    const completeResponse:ICompleteResponse = combineDeep<ICompleteResponse>({}, {fetchStateResponse, responseCode: 1 ,commandOptions, deviceCommand, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries` });
+    const completeResponse: ICompleteResponse = combineDeep<ICompleteResponse>({}, { fetchStateResponse, responseCode: 1, initialCommandOptions: commandOptions, initialDeviceCommand: deviceCommand, responseMsg: `state validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries` });
     return completeResponse;
   }
 

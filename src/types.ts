@@ -16,26 +16,18 @@ export interface ICompleteDeviceInfo {
 export interface ICompleteDevice {
   completeDeviceInfo: ICompleteDeviceInfo;
   completeResponse: ICompleteResponse;
-  deviceInterface: DeviceInterface;
 }
 
-/**
- * @field timeoutMS?: number
- * @field bufferMS?: number
- * @field commandType?: string
- * @field isEightByteProtocol?: boolean
- * @field maxRetries: number
- * @field remainingRetries: number
- */
-export interface ICommandOptions {
+export interface IInterfaceOptions {
   readonly timeoutMS: number;
-  readonly bufferMS?: number;
-  colorAssist?: boolean;
-  readonly commandType: string;
-  readonly isEightByteProtocol?: boolean;
+}
+
+export interface ICommandOptions {
+  readonly colorAssist: boolean;
+  readonly commandType: CommandType;
+  readonly isEightByteProtocol: boolean;
   readonly waitForResponse: boolean;
-  maxRetries: number;
-  remainingRetries?: number;
+  readonly maxRetries: number;
 }
 
 export interface IDeviceCommand {
@@ -43,13 +35,6 @@ export interface IDeviceCommand {
   RGB: IColorRGB;
   CCT: IColorCCT;
   colorMask?: number;
-}
-
-export interface IIncompleteCommand {
-  readonly isOn?: boolean;
-  readonly RGB?: IColorRGB;
-  readonly CCT?: IColorCCT;
-  readonly colorMask?: number;
 }
 
 export interface IColorRGB {
@@ -63,6 +48,19 @@ export interface IColorCCT {
   coldWhite: number;
 }
 
+export interface ICompleteResponse {
+  fetchStateResponse: IFetchStateResponse;
+  initialDeviceCommand: IDeviceCommand;
+  initialCommandOptions: ICommandOptions;
+  responseCode: number;
+  responseMsg?: string;
+}
+
+export interface IFetchStateResponse {
+  deviceState: IDeviceState;
+  deviceMetaData: IDeviceMetaData;
+}
+
 export interface IDeviceState {
   isOn: boolean;
   RGB: IColorRGB;
@@ -73,19 +71,6 @@ export interface IDeviceMetaData {
   readonly controllerHardwareVersion: number;
   readonly controllerFirmwareVersion: number;
   readonly rawData: Buffer;
-}
-
-export interface ICompleteResponse {
-  responseCode: number;
-  deviceCommand: IDeviceCommand;
-  commandOptions: ICommandOptions;
-  fetchStateResponse: IFetchStateResponse;
-  responseMsg?: string;
-}
-
-export interface IFetchStateResponse {
-  deviceState: IDeviceState;
-  deviceMetaData: IDeviceMetaData;
 }
 
 export interface ITransportResponse {
@@ -124,25 +109,29 @@ export const ErrorMessages: { [key in ErrorType]: string } = {
   [ErrorType.UNKNOWN_FAILURE_ERROR]: "An unknown failure occurred",
   [ErrorType.UNNECESSARY_QUERY_ERROR]: "The query was unnecessary",
 };
-export const DEVICE_COMMAND_BYTES = {
-  COMMAND_POWER_ON: [0x71, 0x23, 0x0f],
-  COMMAND_POWER_OFF: [0x71, 0x24, 0x0f],
-  COMMAND_QUERY_STATE: [0x81, 0x8a, 0x8b],
+
+export enum CommandType {
+  POWER,
+  COLOR,
+  ANIMATION_FRAME,
+  QUERY_STATE
 };
 
-export const COMMAND_TYPE = {
-  POWER_COMMAND: "powerCommand",
-  COLOR_COMMAND: "colorCommand",
-  ANIMATION_FRAME: "animationFrame",
-  QUERY_COMMAND: "queryCommand",
+export type StateCommandArray = [number, number, number];
+
+export const BASIC_DEVICE_COMMANDS = {
+  POWER_ON: [0x71, 0x23, 0x0f] as StateCommandArray,
+  POWER_OFF: [0x71, 0x24, 0x0f] as StateCommandArray,
+  QUERY_STATE: [0x81, 0x8a, 0x8b] as StateCommandArray
 };
 
+export type ColorCommandArray = [number, number, number, number, number, number, number, number] | [number, number, number, number, number, number, number];
 /*******************************DEFAULT VALUES****************** */
 
-export const COLOR_MASKS = {
-  WHITE: 0x0f,
-  COLOR: 0xf0,
-  BOTH: 0xff,
+export enum ColorMask {
+  WHITE = 0x0f,
+  COLOR = 0xf0,
+  BOTH = 0xff,
 };
 
 export const DEFAULT_RGB: IColorRGB = {
@@ -175,25 +164,24 @@ export const DEFAULT_DEVICE_METADATA: IDeviceMetaData = {
 };
 
 export const DEFAULT_COMPLETE_RESPONSE: ICompleteResponse = {
-  responseCode: -999,
-  deviceCommand: null,
+  responseCode: null,
+  initialDeviceCommand: null,
   fetchStateResponse: {
     deviceState: null,
     deviceMetaData: null,
   },
-  commandOptions: null,
-  responseMsg: "unknown response",
+  initialCommandOptions: null,
+  responseMsg: null,
 };
 
-export const DEFAULT_COMMAND_OPTIONS: ICommandOptions = {
-  timeoutMS: 50,
-  bufferMS: 50,
-  colorAssist: true,
-  commandType: COMMAND_TYPE.COLOR_COMMAND,
-  waitForResponse: true,
-  maxRetries: 5,
-  remainingRetries: 5,
-};
+// export const DEFAULT_COMMAND_OPTIONS: ICommandOptions = {
+//   timeoutMS: 50,
+//   colorAssist: true,
+//   isEightByteProtocol: false,
+//   commandType: CommandType.COLOR,
+//   waitForResponse: true,
+//   maxRetries: 5,
+// };
 
 /*******************************Helper Types****************** */
 // type Enumerate<N extends number, Acc extends number[] = []> = Acc['length'] extends N

@@ -1,87 +1,87 @@
-import { MockMagicHomeDevice } from "./MockMagicHomeDevice";
+// import { MockMagicHomeDevice } from "./MockMagicHomeDevice";
 
-const EventEmitter = require('events')
+// const EventEmitter = require('events')
 
-namespace net {
+// namespace net {
 
-    export interface Socket {
-        on,
-        once,
-        end,
-        write,
-        destroy,
-    }
+//     export interface Socket {
+//         on,
+//         once,
+//         end,
+//         write,
+//         destroy,
+//     }
 
-    export function connect({ port, host, timeout }) {
-        const netSocket = new NetSocket()
-        netSocket.onConnect(timeout);
-        return netSocket;
-    }
+//     export function connect({ port, host, timeout }) {
+//         const netSocket = new NetSocket()
+//         netSocket.onConnect(timeout);
+//         return netSocket;
+//     }
 
-    export class NetSocket implements Socket {
-        protected host: number;
-        protected port: number;
-        protected timeout: NodeJS.Timeout;
-        protected eventEmitter;
-        protected mockMagicHomeDevice
-        constructor(mockDeviceSettings?) {
-            this.mockMagicHomeDevice = new MockMagicHomeDevice();
-            this.eventEmitter = new EventEmitter();
-            this.eventEmitter.setMaxListeners(100)
-        }
+//     export class NetSocket implements Socket {
+//         protected host: number;
+//         protected port: number;
+//         protected timeout: NodeJS.Timeout;
+//         protected eventEmitter;
+//         protected mockMagicHomeDevice
+//         constructor(mockDeviceSettings?) {
+//             this.mockMagicHomeDevice = new MockMagicHomeDevice();
+//             this.eventEmitter = new EventEmitter();
+//             this.eventEmitter.setMaxListeners(100)
+//         }
 
-        //https://stackoverflow.com/questions/39820651/node-js-eventemitter-how-to-bind-a-class-context-to-the-event-listener-and-then 
+//         //https://stackoverflow.com/questions/39820651/node-js-eventemitter-how-to-bind-a-class-context-to-the-event-listener-and-then 
 
-        public once(event, callback) {
-            this.eventEmitter.once(event, (ret?) => {
-                callback(ret);
-            });
-        }
+//         public once(event, callback) {
+//             this.eventEmitter.once(event, (ret?) => {
+//                 callback(ret);
+//             });
+//         }
 
-        public on(event, callback) {
-            this.eventEmitter.on(event, (ret?) => {
-                callback(ret);
-            });
-        }
+//         public on(event, callback) {
+//             this.eventEmitter.on(event, (ret?) => {
+//                 callback(ret);
+//             });
+//         }
 
-        public async write(data, dataType?, callback?, testCommandOptions?) {
-            try {
-                const response = await this.mockMagicHomeDevice.mockSendDeviceCommand(data)
-                if (response) {
-                    this.emitData(response)
-                }
-            } catch (error) {
-                this.emitError(error)
-            }
-            callback();
-        }
+//         public async write(data, dataType?, callback?, testCommandOptions?) {
+//             try {
+//                 const response = await this.mockMagicHomeDevice.mockSendDeviceCommand(data)
+//                 if (response) {
+//                     this.emitData(response)
+//                 }
+//             } catch (error) {
+//                 this.emitError(error)
+//             }
+//             callback();
+//         }
 
-        private emitData(data) {
-            this.eventEmitter.emit('data', data)
-        }
+//         private emitData(data) {
+//             this.eventEmitter.emit('data', data)
+//         }
 
-        private emitError(error) {
-            this.eventEmitter.emit('error', error)
-        }
+//         private emitError(error) {
+//             this.eventEmitter.emit('error', error)
+//         }
 
-        public async onConnect(timeout) {
-            //wait for connections and then emit connect event
-            this.timeout = setTimeout(() => {
-                this.eventEmitter.emit('timeout')
-            }, timeout);
+//         public async onConnect(timeout) {
+//             //wait for connections and then emit connect event
+//             this.timeout = setTimeout(() => {
+//                 this.eventEmitter.emit('timeout')
+//             }, timeout);
 
-            this.eventEmitter.emit('connect')
-        }
+//             this.eventEmitter.emit('connect')
+//         }
 
-        public async end() {
-            clearTimeout(this.timeout)
-            this.eventEmitter = new EventEmitter();
-        }
+//         public async end() {
+//             clearTimeout(this.timeout)
+//             this.eventEmitter = new EventEmitter();
+//         }
 
-        public async destroy() {
-            // this.eventEmitter = null;
-        }
-    }
-}
+//         public async destroy() {
+//             // this.eventEmitter = null;
+//         }
+//     }
+// }
 
-export default net;
+// export default net;

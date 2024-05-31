@@ -1,5 +1,5 @@
 import net, { Socket } from "net";
-import { DEVICE_COMMAND_BYTES } from "./types";
+import { BASIC_DEVICE_COMMANDS } from "./types";
 import { bufferFromByteArray } from "./utils/miscUtils";
 import { Mutex } from "./utils/miscUtils";
 
@@ -76,6 +76,7 @@ export class Transport {
     const release = await this.mutex.lock();
     const buffer = bufferFromByteArray(byteArray);
     if (!this.connected) {
+      console.log("MHCore send: not connected, connecting...");
       await this.connect();
     }
     this.socket.write(buffer);
@@ -86,9 +87,12 @@ export class Transport {
   async requestState(timeout: number): Promise<Buffer> {
     const release = await this.mutex.lock();
     if (!this.connected) {
+      console.log("MHCore requestState: not connected, connecting...")
       await this.connect();
+
     }
-    const requestBuffer = bufferFromByteArray(DEVICE_COMMAND_BYTES.COMMAND_QUERY_STATE);
+
+    const requestBuffer = bufferFromByteArray(BASIC_DEVICE_COMMANDS.QUERY_STATE);
 
     try {
       const data = await wait(this.socket, "data", timeout, requestBuffer, null);

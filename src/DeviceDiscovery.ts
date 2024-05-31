@@ -10,6 +10,7 @@ import {
 	ICompleteDeviceInfo,
 	DEFAULT_COMPLETE_RESPONSE,
 	IFetchStateResponse,
+	IInterfaceOptions,
 } from './types';
 import {
 	mergeDeep,
@@ -23,13 +24,10 @@ const BROADCAST_PORT: number = 48899;
 const BROADCAST_MAGIC_STRING: string = 'HF-A11ASSISTHREAD';
 
 let testCounter = 0;
-export async function discoverDevices(
-	timeout = 1000,
-	customSubnets: string[] = []
-): Promise<IProtoDevice[]> {
+export async function discoverDevices(timeout = 1000, customSubnets: string[] = []): Promise<IProtoDevice[]> {
 	const userInterfaces: string[] = [];
 
-	if (dockerHostMode()) {
+	if (isDockerHostMode()) {
 		userInterfaces.push('255.255.255.255');
 	} else {
 		for (const subnet of Network.subnets()) {
@@ -60,7 +58,7 @@ export async function discoverDevices(
 	});
 
 	socket.on('message', (msg, rinfo) => {
-    if(testCounter > 3) return;
+		if (testCounter > 3) return;
 		const parts = msg.toString().split(',');
 		const [ipAddress, uniqueId, modelNumber] = parts;
 		if ((net.isIPv4(ipAddress) || net.isIPv6(ipAddress)) && !protoDevicesSet.has(uniqueId)) {
@@ -70,8 +68,8 @@ export async function discoverDevices(
 				modelNumber,
 			});
 		} else {
-      //TODO: handle discovery errors
-    }
+			//TODO: handle discovery errors
+		}
 	});
 
 	await sleepTimeout(timeout).catch((e) => {
@@ -88,9 +86,9 @@ export async function discoverDevices(
  * @returns completeDevice[]
  */
 
-export async function completeDevices(
+export async function generateCompleteDevices(
 	protoDevices: IProtoDevice[],
-	timeout = 500,
+	interfaceOptions: IInterfaceOptions,
 	retries = 3
 ): Promise<ICompleteDevice[]> {
 
@@ -102,7 +100,7 @@ export async function completeDevices(
 
 	protoDevices.forEach((protoDevice) => {
 		deviceResponses.push(
-			completeDevice(protoDevice, timeout).catch((e) => {
+			completeDevice(protoDevice, interfaceOptions).catch((e) => {
 				throw Error('DeviceDiscoveryError: ' + e);
 			})
 		);
@@ -116,7 +114,7 @@ export async function completeDevices(
 	});
 	if (retryProtoDevices.length > 0 && retries > 0)
 		completedDevices.push(
-			...(await completeDevices(retryProtoDevices, timeout, retries - 1).catch(
+			...(await generateCompleteDevices(retryProtoDevices, interfaceOptions, retries - 1).catch(
 				(e) => {
 					throw Error('DeviceDiscoveryError: ' + e);
 				}
@@ -126,16 +124,12 @@ export async function completeDevices(
 	return completedDevices;
 }
 
-async function completeDevice(
-	protoDevice: IProtoDevice,
-	timeout
-): Promise<ICompleteDevice> {
+async function completeDevice(protoDevice: IProtoDevice, interfaceOptions: IInterfaceOptions): Promise<ICompleteDevice> {
 	try {
 		const transport = new Transport(protoDevice.ipAddress);
-		const deviceInterface = new DeviceInterface(transport);
-
-		const fetchStateResponse: IFetchStateResponse =
-			await deviceInterface.queryState(timeout);
+		const deviceInterface = new DeviceInterface(transport, interfaceOptions);
+		
+		const fetchStateResponse: IFetchStateResponse = await deviceInterface.queryState();
 		const completeDeviceInfo: ICompleteDeviceInfo = {
 			deviceMetaData: fetchStateResponse.deviceMetaData,
 			protoDevice,
@@ -144,12 +138,11 @@ async function completeDevice(
 		const completeResponse: ICompleteResponse = generateCompleteResponse({
 			fetchStateResponse,
 			responseCode: 1,
-			deviceCommand: null,
+			initialDeviceCommand: null,
 			responseMsg: 'completeDevice',
 		});
 		const completeDevice: ICompleteDevice = {
 			completeResponse,
-			deviceInterface,
 			completeDeviceInfo,
 		};
 		return completeDevice;
@@ -163,25 +156,16 @@ async function completeDevice(
  * @param timeout number
  * @returns completeDevice[]
  */
-export function completeCustomDevices(
-	completeDevicesInfo: ICompleteDeviceInfo[]
-): ICompleteDevice[] {
+export function completeCustomDevices(completeDevicesInfo: ICompleteDeviceInfo[]): ICompleteDevice[] {
 	const completeDevices: ICompleteDevice[] = [];
 
 	for (const completeDeviceInfo of completeDevicesInfo) {
-		const {
-			protoDevice: { ipAddress },
-		} = completeDeviceInfo;
-
-		const transport = new Transport(ipAddress);
-		const deviceInterface = new DeviceInterface(transport);
 
 		const completeResponse: ICompleteResponse = cloneDeep(
 			DEFAULT_COMPLETE_RESPONSE
 		);
 		const completeDevice: ICompleteDevice = {
 			completeDeviceInfo,
-			deviceInterface,
 			completeResponse,
 		};
 		completeDevices.push(completeDevice);
@@ -190,6 +174,11 @@ export function completeCustomDevices(
 	return completeDevices;
 }
 
-function dockerHostMode(): boolean {
+function isDockerHostMode(): boolean {
 	return !!process.env.DOCKER_HOST_NETWORK;
+}
+
+export function generateInterface(ipAddress: string, timeoutMS: number): DeviceInterface {
+	const transport = new Transport(ipAddress);
+	return new DeviceInterface(transport, { timeoutMS });
 }
