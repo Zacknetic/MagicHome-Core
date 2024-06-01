@@ -1,9 +1,15 @@
 import { DeviceManager } from './DeviceManager';
 import { Transport } from './Transport';
-import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse, ColorMask } from './types';
+import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse, ColorMask, CompleteResponse, DeviceState } from './types';
 import { bufferFromByteArray } from './utils/checksum';
 import { commandToByteArray, isStateEqual } from './utils/coreUtils';
 import { bufferToFetchStateResponse } from './utils/miscUtils';
+
+export interface IAllSettledResult<T> {
+  status: 'fulfilled' | 'rejected';
+  value?: T;
+  reason?: any;
+}
 
 const COMMAND_QUERY_STATE = bufferFromByteArray([0x81, 0x8a, 0x8b]);
 class TestQueryState {
@@ -11,8 +17,8 @@ class TestQueryState {
   private deviceManager: DeviceManager;
   constructor(ipAddress: string) {
     this.transport = new Transport(ipAddress);
-    this.deviceManager = new DeviceManager(this.transport, { timeoutMS: 1000 });
-
+    this.deviceManager = new DeviceManager(this.transport, { timeoutMS: 500 });
+    this.startLoggingDeviceState();
   }
 
   public async testResponseTimeTransport(times: number): Promise<void> {
@@ -115,8 +121,10 @@ class TestQueryState {
     }
 
   }
+  
+  private deviceState: DeviceState;
 
-  async colorLerpWave() {
+  async colorLerpWave(): Promise<IAllSettledResult<CompleteResponse>[]> {
     const commandOptions: CommandOptions = {
       colorAssist: false,
       isEightByteProtocol: false,
@@ -126,31 +134,48 @@ class TestQueryState {
     };
     let command: DeviceCommand;
     let count = 0;
+    const promiseList = [];
 
-    let val
     while (count < 5) {
 
 
 
       const red = Math.floor(Math.sin(count) * 128 + 128);
-      const green = Math.floor(Math.sin(count + 15) * 16 + 16);
-      const blue = Math.floor(Math.sin(count + 3) * 128 + 128);
-      const warmWhite = Math.floor(Math.sin(count + 64) * 16 + 16);
-      const coldWhite = Math.floor(Math.sin(count + 128) * 16 + 16);
+      const green = Math.floor(Math.sin(count + 1) * 128 + 128);
+      const blue = Math.floor(Math.sin(count + 2) * 128 + 128);
+      const warmWhite = Math.floor(Math.sin(count + 3) * 128 + 128);
+      const coldWhite = Math.floor(Math.sin(count + 4) * 128 + 128);
       command = { isOn: true, RGB: { red, green: 0, blue }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: ColorMask.BOTH };
       console.log(red, green, blue, warmWhite, coldWhite)
-      try {
-        val = this.deviceManager.sendCommand(command, commandOptions).catch((error) => {
-          console.error(`Error during send command: ${error.message}`);
-        });
-        console.log("VAL MADE IT TO THE MIDDLE", val)
-      } catch (error) {
-        // console.warn(`Error during query state: ${error.message}`);
-      }
-      count += 1;
+
+
+      promiseList.push(
+        this.deviceManager.sendCommand(command, commandOptions)
+          .then(result => ({
+            status: 'fulfilled',
+            value: result
+          }))
+          .catch(error => ({
+            status: 'rejected',
+            reason: `Error during send command: ${error.message}`
+          }))
+      );
+      count += .1;
       await new Promise((resolve) => setTimeout(resolve, 100));
-      if (count > 10) return val;
     }
+    return await Promise.allSettled(promiseList);
+  }
+
+
+  private loggingInterval: NodeJS.Timeout;
+  private startLoggingDeviceState() {
+    if (this.loggingInterval) {
+      clearInterval(this.loggingInterval);
+    }
+
+    this.loggingInterval = setInterval(() => {
+      console.log(this.deviceState);
+    }, 2000);
   }
 }
 

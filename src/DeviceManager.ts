@@ -1,5 +1,4 @@
 import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, ErrorType, InterfaceOptions } from "./types";
-import { EventEmitter } from "events";
 import { Transport } from "./Transport";
 import { commandToByteArray, isStateEqual } from "./utils/coreUtils";
 import { bufferToFetchStateResponse, combineDeep } from "./utils/miscUtils";
@@ -12,7 +11,8 @@ type CancellationToken = {
 
 export class DeviceManager {
   private currentCommandId = 0;
-
+  private currentCancellationToken: CancellationToken | null = null;
+  private readonly MAX_COMMAND_ID = 2 ** 32 - 1; // Maximum value for a 32-bit integer
   constructor(private transport: Transport, private interfaceOptions: InterfaceOptions) { }
 
   public async queryState(): Promise<FetchStateResponse> {
@@ -20,69 +20,59 @@ export class DeviceManager {
     return bufferToFetchStateResponse(response);
   }
 
-  private cancellationToken: CancellationToken = { isCancelled: false };
+  public sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse> {
 
-  public async sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse | string> {
-    // Increment command ID to represent a new command
-
-
-
-    // Clear previous cancellation if any
-    if (this.cancellationToken.cancel) {
-      this.cancellationToken.cancel();
+    if (this.currentCommandId >= this.MAX_COMMAND_ID) {
+      this.currentCommandId = 0;
+    } else {
+      this.currentCommandId++;
     }
+    // Increment command ID to represent a new command
+    const commandId = ++this.currentCommandId;
+    const cancellationToken: CancellationToken = { isCancelled: false };
 
-    this.cancellationToken = { isCancelled: false };
+    // Set the current cancellation token
+    this.currentCancellationToken = cancellationToken;
 
+    // Return a promise that resolves with the result of processCommand
     this.sendCommandToTransport(deviceCommand, commandOptions);
-    this.currentCommandId++;
-    if (!commandOptions.waitForResponse) return Promise.resolve(null);
-    const val = await this.processCommand(deviceCommand, commandOptions, this.cancellationToken).catch((error) => {
-      console.error(`Error in sendCommand ${this.currentCommandId}`);
-      console.error("the error: ", error);
-      return `exited too early ${this.currentCommandId}`;
-    });
-    
-    console.log("got the VAL at stage 3", this.currentCommandId, val)
-    console.log('val', val? val : "no val")
-    
-    return val;
+
+    return this.processCommand(deviceCommand, commandOptions, cancellationToken, commandId);
   }
 
-  private async processCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions, cancellationToken: CancellationToken): Promise<CompleteResponse> {
-    
+  private async processCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions, cancellationToken: CancellationToken, commandId: number): Promise<CompleteResponse> {
     let fetchStateResponse: FetchStateResponse = null;
     let isValidState = false;
     let retryCount = commandOptions.maxRetries || 0;
-    while (!isValidState && retryCount > 0 && commandOptions.waitForResponse) {
 
-      // Wait for either the timeout or the cancellation, whichever comes first
+    while (!isValidState && retryCount > 0 && commandOptions.waitForResponse) {
+      // Check if this command has been canceled
+      if (cancellationToken.isCancelled || this.currentCommandId !== commandId) {
+        throw new Error('Command cancelled');
+      }
+
+      // Wait for either the timeout or the cancellation
       await Promise.race([
         new Promise(resolve => setTimeout(resolve, 2000)),
-        new Promise((_, reject) => this.cancellationToken.cancel = () => {
-          console.log('command should be canceled within the promise race. Command ID:', this.currentCommandId)
-          
-          reject(new Error(`Command cancelled ${this.currentCommandId}`))
-        })
-      ]).catch((error) => { 
-        console.log("caught the promise race error")
-        console.log('the error: ', error);
-        throw new Error('Command cancelled' + error);
-      });
+        new Promise<void>((_, reject) => cancellationToken.cancel = () => reject(new Error('Command cancelled')))
+      ]);
 
-      if (cancellationToken.isCancelled) throw new Error('Command cancelled but late'); // Exit if this command has been cancelled
+      if (cancellationToken.isCancelled || this.currentCommandId !== commandId) {
+        throw new Error('Command cancelled');
+      }
 
       try {
         fetchStateResponse = await this.queryState();
-        console.log("this shoudln't be called until the end")
       } catch (error) {
         retryCount--;
         continue;
       }
-      isValidState = isStateEqual(deviceCommand, fetchStateResponse, commandOptions.commandType);
-      console.log('isValidState', isValidState)
-      if (!isValidState) await this.sendCommandToTransport(deviceCommand, commandOptions);
 
+      isValidState = isStateEqual(deviceCommand, fetchStateResponse, commandOptions.commandType);
+      if (!isValidState) {
+        console.log("this should not send")
+        await this.sendCommandToTransport(deviceCommand, commandOptions);
+      }
 
       retryCount--;
     }
@@ -103,5 +93,14 @@ export class DeviceManager {
   private async sendCommandToTransport(deviceCommand: DeviceCommand, commandOptions: CommandOptions) {
     const byteArray = commandToByteArray(deviceCommand, commandOptions);
     await this.transport.send(byteArray);
+  }
+
+  public abort() {
+    if (this.currentCancellationToken) {
+      this.currentCancellationToken.isCancelled = true; // Mark the current command as cancelled
+      if (this.currentCancellationToken.cancel) {
+        this.currentCancellationToken.cancel(); // Call the cancellation function to reject the cancellation promise
+      }
+    }
   }
 }
