@@ -51,7 +51,7 @@ export function commandToByteArray(deviceCommand: DeviceCommand, commandOptions:
 function constructColorCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): ColorCommandArray {
     let commandByteArray: ColorCommandArray;
     const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
-    console.log("Color Command: ", deviceCommand, commandOptions)
+    // console.log("Color Command: ", deviceCommand, commandOptions)
     let newColorMask = colorMask;
 
     if (!colorMask) {
@@ -67,7 +67,7 @@ function constructColorCommand(deviceCommand: DeviceCommand, commandOptions: Com
 }
 
 export function isStateEqual(deviceCommand: DeviceCommand, deviceResponse: FetchStateResponse, commandType: CommandType): boolean {
-
+    if (!deviceResponse || !deviceCommand) throw new Error("Invalid arguments");
     const { deviceState } = deviceResponse;
     if (deviceState.isOn == false && deviceCommand.isOn == false) return true;
     let omitItems;

@@ -86,25 +86,74 @@ class TestQueryState {
     console.log(`Total time: ${responseTimes.reduce((sum, time) => sum + time, 0).toFixed(3)} ms`)
   }
 
-  async testResponseTimeDeviceManager(times: number): Promise<void> {
+  async testResponseTimeDeviceManager(times: number) {
+    const commandOptions: CommandOptions = {
+      colorAssist: false,
+      isEightByteProtocol: false,
+      commandType: CommandType.COLOR,
+      waitForResponse: false,
+      maxRetries: 0,
+    };
+    let command: DeviceCommand;
+    for (let i = 0; i < 5; i++) {
+      const randomRed = Math.floor(Math.random() * 256);
+      const randomGreen = Math.floor(Math.random() * 256);
+      const randomBlue = Math.floor(Math.random() * 256);
+      command = { isOn: true, RGB: { red: randomRed, green: randomGreen, blue: randomBlue }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: ColorMask.BOTH };
+      try {
+        this.deviceManager.sendCommand(command, commandOptions).catch((error) => {
+          // console.error(`Error during send command: ${error.message}`);
+        });
+        //wait for 1000 ms
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      } catch (error) {
+        console.warn(`Error during query state: ${error.message}`);
+      }
+      // const state = await this.deviceManager.sendCommand(command, commandOptions);
+    }
+
+  }
+
+  async colorLerpWave() {
     const commandOptions: CommandOptions = {
       colorAssist: false,
       isEightByteProtocol: false,
       commandType: CommandType.COLOR,
       waitForResponse: true,
-      maxRetries: 5,
+      maxRetries: 100,
     };
     let command: DeviceCommand;
-    for (let i = 0; i < times; i++) {
-      const randomRed = Math.floor(Math.random() * 256);
-      const randomGreen = Math.floor(Math.random() * 256);
-      const randomBlue = Math.floor(Math.random() * 256);
-      command = { isOn: true, RGB: { red: randomRed, green: randomGreen, blue: randomBlue }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: ColorMask.BOTH };
-      const state = await this.deviceManager.sendCommand(command, commandOptions);
-      console.log("state: ", state);
-    }
+    let count = 0;
 
+    let val
+    while (count < 5) {
+
+
+
+      const red = Math.floor(Math.sin(count) * 128 + 128);
+      const green = Math.floor(Math.sin(count + 15) * 16 + 16);
+      const blue = Math.floor(Math.sin(count + 3) * 128 + 128);
+      const warmWhite = Math.floor(Math.sin(count + 64) * 16 + 16);
+      const coldWhite = Math.floor(Math.sin(count + 128) * 16 + 16);
+      command = { isOn: true, RGB: { red, green: 0, blue }, CCT: { warmWhite: 0, coldWhite: 0 }, colorMask: ColorMask.BOTH };
+      console.log(red, green, blue, warmWhite, coldWhite)
+      try {
+        val = this.deviceManager.sendCommand(command, commandOptions).catch((error) => {
+          console.error(`Error during send command: ${error.message}`);
+        });
+        console.log("VAL MADE IT TO THE MIDDLE", val)
+      } catch (error) {
+        // console.warn(`Error during query state: ${error.message}`);
+      }
+      count += 1;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (count > 10) return val;
+    }
   }
 }
+
+
 
 export default TestQueryState;
