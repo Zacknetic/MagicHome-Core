@@ -1,6 +1,6 @@
 import * as dgram from 'dgram';
 import * as net from 'net';
-import { Network } from './Network';
+import { Network } from '../utils/Network';
 import { DeviceManager } from './DeviceManager';
 import { Transport } from './Transport';
 import {
@@ -10,14 +10,13 @@ import {
 	FetchStateResponse,
 	InterfaceOptions,
 	DeviceBundle,
-} from './types';
+} from '../types';
 import {
 	mergeDeep,
 	cloneDeep,
 	combineDeep,
 	sleepTimeout,
-} from './utils/miscUtils';
-import { generateCompleteResponse } from './utils/MHResponses';
+} from '../utils/miscUtils';
 
 const BROADCAST_PORT: number = 48899;
 const BROADCAST_MAGIC_STRING: string = 'HF-A11ASSISTHREAD';

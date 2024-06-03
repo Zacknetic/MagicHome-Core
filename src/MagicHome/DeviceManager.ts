@@ -1,7 +1,8 @@
-import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, ErrorType, InterfaceOptions, MaxCommandRetryError, CancelTokenObject, CommandCancelledError, MaxWaitTimeError } from "./types";
+import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, InterfaceOptions, CancelTokenObject } from "../types";
 import { Transport } from "./Transport";
-import { commandToByteArray, isStateEqual } from "./utils/coreUtils";
-import { bufferToFetchStateResponse } from "./utils/miscUtils";
+import { commandToByteArray, isStateEqual } from "../utils/coreUtils";
+import { bufferToFetchStateResponse } from "../utils/miscUtils";
+import { CommandCancelledError, MaxCommandRetryError, MaxWaitTimeError } from "../errors/errorTypes";
 
 
 export class DeviceManager {
@@ -10,24 +11,26 @@ export class DeviceManager {
   constructor(private transport: Transport, private interfaceOptions: InterfaceOptions) { }
 
   public sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse> {
+    this.currentCommandId = this.currentCommandId >= this.MAX_COMMAND_ID ? 0 : this.currentCommandId + 1; // Ensure that the command ID is within the valid range
+    const commandId = this.currentCommandId; // Store the current command ID
 
-    if (this.currentCommandId >= this.MAX_COMMAND_ID) {
-      this.currentCommandId = 0;
-    } else {
-      this.currentCommandId++;
-    }
-    // Increment command ID to represent a new command
-    const commandId = ++this.currentCommandId;
-    const cancellationToken: CancelTokenObject = this.createCancelToken();
+    const cancellationToken: CancelTokenObject = this.createCancelToken(); // Create a cancellation token for the command
 
-    // Set the current cancellation token
-
-    // Return a promise that resolves with the result of processCommand
-    this.sendCommandToTransport(deviceCommand, commandOptions);
-
-    return this.processCommand(deviceCommand, commandOptions, cancellationToken, commandId);
+    this.sendCommandToTransport(deviceCommand, commandOptions); // Send the command to the device.
+    return this.processCommand(deviceCommand, commandOptions, cancellationToken, commandId); // Process the command
   }
 
+  /**
+   * Tests the validity of the state after sending a command to the device.
+   * Retries sending the command to the device until the state is valid or the maximum number of retries is reached.
+   * Cancels the command if the cancellation token is cancelled.
+   * @param deviceCommand 
+   * @param commandOptions 
+   * @param cancellationToken 
+   * @param commandId 
+   * @returns Promise<CompleteResponse>
+   * @throws CommandCancelledError, MaxCommandRetryError, MaxWaitTimeError
+   */
   private async processCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions, cancellationToken: CancelTokenObject, commandId: number): Promise<CompleteResponse> {
     let fetchStateResponse: FetchStateResponse;
     let isStateValid = false;
@@ -44,6 +47,7 @@ export class DeviceManager {
 
       return Promise.resolve(completeResponse);
     }
+
     while (!isStateValid && retryCount > 0) {
 
       await this.wait(cancellationToken);
@@ -80,7 +84,7 @@ export class DeviceManager {
         initialDeviceCommand: deviceCommand,
         responseMsg: `Invalid state after ${commandOptions.maxRetries - retryCount - 1} retries`
       };
-      throw new MaxCommandRetryError(commandOptions.maxRetries , `Command failed after max retries ${commandOptions.maxRetries}`);
+      throw new MaxCommandRetryError(commandOptions.maxRetries, `Command failed after max retries ${commandOptions.maxRetries}`);
     }
 
     const completeResponse: CompleteResponse = {
@@ -99,7 +103,7 @@ export class DeviceManager {
     await this.transport.send(byteArray);
   }
 
-  public async queryState(cancelToken: CancelTokenObject): Promise<FetchStateResponse> {
+  public async queryState(cancelToken?: CancelTokenObject): Promise<FetchStateResponse> {
     const response = await this.transport.requestState(this.interfaceOptions.timeoutMS, cancelToken);
     return bufferToFetchStateResponse(response);
   }

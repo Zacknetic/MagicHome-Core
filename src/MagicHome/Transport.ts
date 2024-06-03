@@ -1,7 +1,8 @@
 import net, { Socket } from "net";
-import { BASIC_DEVICE_COMMANDS, CancelTokenObject, MaxWaitTimeError } from "./types";
-import { bufferFromByteArray } from "./utils/miscUtils";
-import { Mutex } from "./utils/miscUtils";
+import { BASIC_DEVICE_COMMANDS, CancelTokenObject } from "../types";
+import { bufferFromByteArray } from "../utils/miscUtils";
+import { Mutex } from "../utils/miscUtils";
+import { MaxWaitTimeError } from "../errors/errorTypes";
 
 const PORT = 5577;
 const SOCKET_TIMEOUT_MS = 10000;
@@ -79,9 +80,9 @@ export class Transport {
                 timeout: SOCKET_TIMEOUT_MS,
             };
 
-            this.socket.on("error", () => {});
+            this.socket.on("error", () => { });
 
-            this.socket.connect(options, () => {});
+            this.socket.connect(options, () => { });
 
             await wait({
                 emitter: this.socket,
@@ -143,7 +144,7 @@ export class Transport {
         }
     }
 
-    async requestState(timeout: number, cancellationToken: CancelTokenObject): Promise<Buffer> {
+    async requestState(timeout: number, cancellationToken?: CancelTokenObject): Promise<Buffer> {
         const release = await this.mutex.lock();
         try {
             if (!this.connected) {

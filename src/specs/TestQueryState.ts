@@ -1,9 +1,8 @@
-import { DeviceManager } from './DeviceManager';
-import { Transport } from './Transport';
-import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse, ColorMask, CompleteResponse, DeviceState } from './types';
-import { bufferFromByteArray } from './utils/checksum';
-import { commandToByteArray, isStateEqual } from './utils/coreUtils';
-import { bufferToFetchStateResponse } from './utils/miscUtils';
+import { DeviceManager } from '../MagicHome/DeviceManager';
+import { Transport } from '../MagicHome/Transport';
+import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse, ColorMask, CompleteResponse, DeviceState } from '../types';
+import { commandToByteArray, isStateEqual } from '../utils/coreUtils';
+import { bufferFromByteArray, bufferToFetchStateResponse } from '../utils/miscUtils';
 
 export interface IAllSettledResult<T> {
   status: 'fulfilled' | 'rejected';
