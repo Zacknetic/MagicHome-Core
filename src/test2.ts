@@ -17,7 +17,6 @@ class WaitTestFailedError extends Error {
     }
 }
 
-
 export class ExampleClass {
     private currentCancelToken?: CancelTokenObject;
 
@@ -35,13 +34,13 @@ export class ExampleClass {
         return new Promise<boolean>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 if (cancellationToken.isCancelled()) {
-                    reject(new CommandCancelledError());
+                reject(new CommandCancelledError());
                 } else if (shouldSucceed) {
                     resolve(true);
                 } else {
                     reject(new WaitTestFailedError());
                 }
-            }, 2000);
+            }, 100);
 
             if (cancellationToken.isCancelled()) {
                 clearTimeout(timeout);
@@ -52,13 +51,15 @@ export class ExampleClass {
 
     private async loopTest(totalRetries: number, retriesUntilSuccessful: number, cancellationToken: CancelTokenObject): Promise<boolean> {
         let currRetryCount = 0;
-        let finallySucceeded = false;
 
         while (currRetryCount < totalRetries) {
             try {
-                const shouldSucceed = currRetryCount === retriesUntilSuccessful;
-                finallySucceeded = await this.waitTest(shouldSucceed, cancellationToken);
-                break;
+              
+                let shouldSucceed = currRetryCount === retriesUntilSuccessful;
+                if(retriesUntilSuccessful === 2){
+                    shouldSucceed = true;
+                }
+                return await this.waitTest(shouldSucceed, cancellationToken);
             } catch (error) {
                 if (error instanceof CommandCancelledError) {
                     console.log("Command cancelled");
@@ -71,10 +72,10 @@ export class ExampleClass {
             }
         }
 
-        return finallySucceeded;
+        throw new WaitTestFailedError();
     }
 
-    private async driverTest(totalRetries: number, retriesUntilSuccessful: number): Promise<boolean> {
+   private async driverTest(totalRetries: number, retriesUntilSuccessful: number): Promise<boolean> {
         if (this.currentCancelToken) {
             this.currentCancelToken.cancel();
         }
@@ -84,14 +85,18 @@ export class ExampleClass {
     }
 
     private async allSettledTest(): Promise<PromiseSettledResult<boolean>[]> {
-        const promiseList: Promise<boolean>[] = [];
+        const promiseList: Promise<PromiseSettledResult<boolean>>[] = [];
         const retriesUntilSuccessful = 5;
 
-        for (let i = 0; i < 10; i++) {
-            promiseList.push(this.driverTest(i, retriesUntilSuccessful).catch(() => false));
+        for (let i = 1; i <= 10; i++) {
+            const promise = this.driverTest(i, retriesUntilSuccessful)
+                .then(value => ({ status: 'fulfilled', value } as PromiseFulfilledResult<boolean>))
+                .catch(reason => ({ status: 'rejected', reason } as PromiseRejectedResult));
+            promiseList.push(promise);
+            await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
-        const finalResult = await Promise.allSettled(promiseList);
+        const finalResult = await Promise.all(promiseList);
         return finalResult;
     }
 

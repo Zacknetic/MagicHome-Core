@@ -1,50 +1,33 @@
-export default class TestClass {
-    private timeouts: NodeJS.Timeout[] = [];
-    private activeIterations: Set<number> = new Set();
-
-    callTestFunction() {
-        for (let i = 0; i < 3; i++) {
-            this.test(i + 1);
-        }
-    }
-
-    private test(iteration: number) {
-        // Cancel any previous timeouts
-        this.timeouts.forEach(clearTimeout);
-        this.timeouts = [];
-
-        // Mark the current iteration as active
-        this.activeIterations.add(iteration);
-
-        // Start the recursive test
-        this.recursiveTest(iteration, 0);
-    }
-
-    private recursiveTest(iteration: number, currentCount: number) {
-        if (!this.activeIterations.has(iteration)) {
-            return; // Stop if this iteration has been canceled
-        }
-
-        console.log(`Test! Iteration ${iteration}, CurrentCount ${currentCount}`);
-
-        if (currentCount < 5) {
-            const timeout = setTimeout(() => {
-                this.recursiveTest(iteration, currentCount + 1);
-            }, 2000);
-            this.timeouts.push(timeout);
-        } else {
-            this.calledWhenDone().then(() => {
-                console.log(`Result of iteration ${iteration}: done!`);
-            });
-        }
-    }
-
-    private async calledWhenDone(): Promise<void> {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                console.log("calledWhenDone finished!");
-                resolve();
-            }, 2000);
-        });
-    }
-}
+async function baz() {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    throw new Error("baz failed");
+  }
+  
+  function bar() {
+    return baz();
+  }
+  
+  function nestedBar() {
+    return bar().catch((err) => {
+      return Promise.reject(err); // Propagate the error
+    });
+  }
+  
+  export function foo() {
+    const promiseList = [
+      nestedBar(), // This will reject after 2000ms
+      Promise.resolve("foo succeeded"),
+    ];
+  
+    return Promise.allSettled(promiseList).then((results) => {
+        console.log(results);
+    //   results.forEach((result, index) => {
+    //     if (result.status === "fulfilled") {
+    //       console.log(`Promise ${index + 1} succeeded:`, result.value);
+    //     } else if (result.status === "rejected") {
+    //       console.error(`Promise ${index + 1} failed:`, result.reason);
+    //     }
+    //   });
+    });
+  }
+  

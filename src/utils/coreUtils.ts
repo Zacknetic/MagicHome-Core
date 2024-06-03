@@ -52,11 +52,8 @@ function constructColorCommand(deviceCommand: DeviceCommand, commandOptions: Com
     let commandByteArray: ColorCommandArray;
     const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
     // console.log("Color Command: ", deviceCommand, commandOptions)
-    let newColorMask = colorMask;
-
-    if (!colorMask) {
-        newColorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? ColorMask.COLOR : ColorMask.WHITE;
-    }
+    let newColorMask = colorMask ? colorMask : Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? ColorMask.COLOR : ColorMask.WHITE;
+;
     if (commandOptions.isEightByteProtocol) {
         commandByteArray = [0x31, red, green, blue, warmWhite, newColorMask, 0x0F]; //8th byte checksum calculated later in send()
     } else {

@@ -184,42 +184,38 @@ export function sleepTimeout(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// mutex.ts
 export class Mutex {
-	private locked = false;
-	private queue: ((value: (() => void) | PromiseLike<() => void>) => void)[] =
-		[];
+    private locked = false;
+    private queue: ((value: (() => void) | PromiseLike<() => void>) => void)[] = [];
 
-	async lock(): Promise<() => void> {
-		if (this.locked) {
-			return new Promise(
-				(
-					resolve: (value: (() => void) | PromiseLike<() => void>) => void,
-					reject: (reason?: any) => void
-				) => {
-					this.queue.push(resolve);
-				}
-			);
-		} else {
-			this.locked = true;
-			return () => {
-				this.unlock();
-			};
-		}
-	}
+    async lock(): Promise<() => void> {
+        if (this.locked) {
+            return new Promise((resolve) => {
+                this.queue.push(resolve);
+            });
+        } else {
+            this.locked = true;
+            return () => {
+                this.unlock();
+            };
+        }
+    }
 
-	unlock(): void {
-		if (this.queue.length > 0) {
-			const resolve = this.queue.shift();
-			resolve(() => {
-				this.unlock();
-			});
-		} else {
-			this.locked = false;
-		}
-	}
+    unlock(): void {
+        if (this.queue.length > 0) {
+            const resolve = this.queue.shift();
+            resolve(() => {
+                this.unlock();
+            });
+        } else {
+            this.locked = false;
+        }
+    }
 }
 
-export async function asyncWaitCurveball(timeout) {
+
+export async function asyncWaitCurveball() {
 	await new Promise(async (resolve, reject) => {
 		await setTimeout(() => {
 			resolve(true);

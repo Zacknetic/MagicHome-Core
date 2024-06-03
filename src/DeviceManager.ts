@@ -1,24 +1,13 @@
-import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, ErrorType, InterfaceOptions } from "./types";
+import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, ErrorType, InterfaceOptions, MaxCommandRetryError, CancelTokenObject, CommandCancelledError, MaxWaitTimeError } from "./types";
 import { Transport } from "./Transport";
 import { commandToByteArray, isStateEqual } from "./utils/coreUtils";
-import { bufferToFetchStateResponse, combineDeep } from "./utils/miscUtils";
-import { MHError } from "./utils/MHResponses";
+import { bufferToFetchStateResponse } from "./utils/miscUtils";
 
-type CancellationToken = {
-  isCancelled: boolean;
-  cancel?: () => void;
-};
 
 export class DeviceManager {
   private currentCommandId = 0;
-  private currentCancellationToken: CancellationToken | null = null;
   private readonly MAX_COMMAND_ID = 2 ** 32 - 1; // Maximum value for a 32-bit integer
   constructor(private transport: Transport, private interfaceOptions: InterfaceOptions) { }
-
-  public async queryState(): Promise<FetchStateResponse> {
-    const response = await this.transport.requestState(this.interfaceOptions.timeoutMS);
-    return bufferToFetchStateResponse(response);
-  }
 
   public sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse> {
 
@@ -29,10 +18,9 @@ export class DeviceManager {
     }
     // Increment command ID to represent a new command
     const commandId = ++this.currentCommandId;
-    const cancellationToken: CancellationToken = { isCancelled: false };
+    const cancellationToken: CancelTokenObject = this.createCancelToken();
 
     // Set the current cancellation token
-    this.currentCancellationToken = cancellationToken;
 
     // Return a promise that resolves with the result of processCommand
     this.sendCommandToTransport(deviceCommand, commandOptions);
@@ -40,54 +28,70 @@ export class DeviceManager {
     return this.processCommand(deviceCommand, commandOptions, cancellationToken, commandId);
   }
 
-  private async processCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions, cancellationToken: CancellationToken, commandId: number): Promise<CompleteResponse> {
-    let fetchStateResponse: FetchStateResponse = null;
-    let isValidState = false;
+  private async processCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions, cancellationToken: CancelTokenObject, commandId: number): Promise<CompleteResponse> {
+    let fetchStateResponse: FetchStateResponse;
+    let isStateValid = false;
     let retryCount = commandOptions.maxRetries || 0;
 
-    while (!isValidState && retryCount > 0 && commandOptions.waitForResponse) {
-      // Check if this command has been canceled
-      if (cancellationToken.isCancelled || this.currentCommandId !== commandId) {
-        throw new Error('Command cancelled');
-      }
+    if (!commandOptions.waitForResponse) {
+      const completeResponse: CompleteResponse = {
+        fetchStateResponse: fetchStateResponse!,
+        responseCode: 1,
+        initialCommandOptions: commandOptions,
+        initialDeviceCommand: deviceCommand,
+        responseMsg: `Command sent without waiting for response`
+      };
 
-      // Wait for either the timeout or the cancellation
-      await Promise.race([
-        new Promise(resolve => setTimeout(resolve, 2000)),
-        new Promise<void>((_, reject) => cancellationToken.cancel = () => reject(new Error('Command cancelled')))
-      ]);
+      return Promise.resolve(completeResponse);
+    }
+    while (!isStateValid && retryCount > 0) {
 
-      if (cancellationToken.isCancelled || this.currentCommandId !== commandId) {
+      await this.wait(cancellationToken);
+
+      if (cancellationToken.isCancelled() || this.currentCommandId !== commandId) {
         throw new Error('Command cancelled');
       }
 
       try {
-        fetchStateResponse = await this.queryState();
-      } catch (error) {
-        retryCount--;
-        continue;
-      }
+        fetchStateResponse = await this.queryState(cancellationToken);
+        isStateValid = isStateEqual(deviceCommand, fetchStateResponse, commandOptions.commandType);
 
-      isValidState = isStateEqual(deviceCommand, fetchStateResponse, commandOptions.commandType);
-      if (!isValidState) {
-        console.log("this should not send")
-        await this.sendCommandToTransport(deviceCommand, commandOptions);
+        if (!isStateValid) await this.sendCommandToTransport(deviceCommand, commandOptions);
+      } catch (error: any) {
+        if (error instanceof CommandCancelledError) {
+          throw error;
+        } else if (error instanceof MaxWaitTimeError) {
+          console.log("waited a bit too long");
+
+        } else {
+          throw error; // rethrow unexpected errors
+        }
       }
 
       retryCount--;
     }
 
-    if (!isValidState) {
-      throw new MHError(null, { fetchStateResponse, initialCommandOptions: commandOptions, initialDeviceCommand: deviceCommand, responseMsg: `Invalid state after ${commandOptions.maxRetries} retries` }, ErrorType.INCORRECT_DEVICE_STATE_ERROR);
+
+    if (!isStateValid) {
+      const errorResponse: Partial<CompleteResponse> = {
+        fetchStateResponse: fetchStateResponse!,
+        responseCode: -4,
+        initialCommandOptions: commandOptions,
+        initialDeviceCommand: deviceCommand,
+        responseMsg: `Invalid state after ${commandOptions.maxRetries - retryCount - 1} retries`
+      };
+      throw new MaxCommandRetryError(commandOptions.maxRetries , `Command failed after max retries ${commandOptions.maxRetries}`);
     }
 
-    return combineDeep<CompleteResponse>({}, {
-      fetchStateResponse,
+    const completeResponse: CompleteResponse = {
+      fetchStateResponse: fetchStateResponse!,
       responseCode: 1,
       initialCommandOptions: commandOptions,
       initialDeviceCommand: deviceCommand,
-      responseMsg: `State validity verified ${isValidState} after ${commandOptions.maxRetries - retryCount - 1} retries`
-    });
+      responseMsg: `State validity verified ${isStateValid} after ${commandOptions.maxRetries - retryCount - 1} retries`
+    };
+
+    return completeResponse;
   }
 
   private async sendCommandToTransport(deviceCommand: DeviceCommand, commandOptions: CommandOptions) {
@@ -95,12 +99,36 @@ export class DeviceManager {
     await this.transport.send(byteArray);
   }
 
-  public abort() {
-    if (this.currentCancellationToken) {
-      this.currentCancellationToken.isCancelled = true; // Mark the current command as cancelled
-      if (this.currentCancellationToken.cancel) {
-        this.currentCancellationToken.cancel(); // Call the cancellation function to reject the cancellation promise
-      }
-    }
+  public async queryState(cancelToken: CancelTokenObject): Promise<FetchStateResponse> {
+    const response = await this.transport.requestState(this.interfaceOptions.timeoutMS, cancelToken);
+    return bufferToFetchStateResponse(response);
   }
+
+  private createCancelToken(): CancelTokenObject {
+    let cancelled = false;
+    return {
+      cancel: () => {
+        cancelled = true;
+      },
+      isCancelled: () => cancelled
+    };
+  }
+
+  private async wait(cancellationToken: CancelTokenObject): Promise<void> {
+    await new Promise<boolean>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (cancellationToken.isCancelled()) {
+          reject(new CommandCancelledError());
+        } else {
+          resolve(true);
+        }
+      }, this.interfaceOptions.timeoutMS);
+
+      if (cancellationToken.isCancelled()) {
+        clearTimeout(timeout);
+        reject(new CommandCancelledError());
+      }
+    });
+  }
+
 }

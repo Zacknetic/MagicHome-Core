@@ -1,3 +1,4 @@
+import { Socket } from "net";
 import { DeviceManager } from "./DeviceManager";
 import { cloneDeep } from "./utils/miscUtils";
 
@@ -87,6 +88,7 @@ export type IQueueOptions = {
 /*******************************CONSTANTS****************** */
 
 export enum ErrorType {
+  UNNECESSARY_QUERY_ERROR = -10,
   INCORRECT_BUFFER_ERROR = -9,
   DEVICE_UNRESPONSIVE_ERROR = -8,
   SOCKET_ERROR = -7,
@@ -95,10 +97,11 @@ export enum ErrorType {
   INCORRECT_DEVICE_STATE_ERROR = -4,
   SOCKET_CLOSED_ERROR = -2,
   UNKNOWN_FAILURE_ERROR = -1,
-  UNNECESSARY_QUERY_ERROR = 0,
+  COMMAND_CANCELLED_ERROR = 0,
 }
 
 export const ErrorMessages: { [key in ErrorType]: string } = {
+  [ErrorType.UNNECESSARY_QUERY_ERROR]: "The query was unnecessary",
   [ErrorType.INCORRECT_BUFFER_ERROR]: "Incorrect or wrong length buffer",
   [ErrorType.DEVICE_UNRESPONSIVE_ERROR]: "The device did not respond",
   [ErrorType.SOCKET_ERROR]: "The socket reported an error",
@@ -107,7 +110,7 @@ export const ErrorMessages: { [key in ErrorType]: string } = {
   [ErrorType.INCORRECT_DEVICE_STATE_ERROR]: "The device state was incorrect",
   [ErrorType.SOCKET_CLOSED_ERROR]: "The socket was closed before resolving",
   [ErrorType.UNKNOWN_FAILURE_ERROR]: "An unknown failure occurred",
-  [ErrorType.UNNECESSARY_QUERY_ERROR]: "The query was unnecessary",
+  [ErrorType.COMMAND_CANCELLED_ERROR]: "The command was cancelled due to a newer command being issued",
 };
 
 export enum CommandType {
@@ -126,6 +129,42 @@ export const BASIC_DEVICE_COMMANDS = {
 };
 
 export type ColorCommandArray = [number, number, number, number, number, number, number, number] | [number, number, number, number, number, number, number];
+
+export type CancelTokenObject = {
+  cancel: () => void;
+  isCancelled: () => boolean;
+};
+
+export type WaitConfig = {
+  emitter: Socket;
+  eventName: string;
+  timeout: number;
+  writeData?: Buffer;
+  cancellationToken?: CancelTokenObject;
+};
+
+export class CommandCancelledError extends Error {
+  constructor(message = "command cancelled") {
+      super(message);
+      this.name = "CommandCancelledError";
+  }
+}
+
+export class MaxCommandRetryError extends Error {
+  constructor(maxRetries: number, message = `Command failed after max retries ${maxRetries} `) {
+    // message.concat(command)
+    super(message);
+    this.name = "CommandCancelledError";
+  }
+}
+
+export class MaxWaitTimeError extends Error {
+  constructor(message = `Max wait time exceeded`) {
+    // message.concat(command)
+    super(message);
+    this.name = "MaxWaitTimeError";
+  }
+}
 /*******************************DEFAULT VALUES****************** */
 
 export enum ColorMask {
@@ -155,23 +194,6 @@ export const DEFAULT_COMMAND: DeviceCommand = {
   isOn: true,
   RGB: cloneDeep(DEFAULT_RGB),
   CCT: cloneDeep(DEFAULT_CCT),
-};
-
-export const DEFAULT_DEVICE_METADATA: DeviceMetaData = {
-  controllerFirmwareVersion: null,
-  controllerHardwareVersion: null,
-  rawData: null,
-};
-
-export const DEFAULT_COMPLETE_RESPONSE: CompleteResponse = {
-  responseCode: null,
-  initialDeviceCommand: null,
-  fetchStateResponse: {
-    deviceState: null,
-    deviceMetaData: null,
-  },
-  initialCommandOptions: null,
-  responseMsg: null,
 };
 
 // export const DEFAULT_COMMAND_OPTIONS: ICommandOptions = {
