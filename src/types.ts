@@ -115,7 +115,7 @@ export const ErrorMessages: { [key in ErrorType]: string } = {
 
 export enum CommandType {
   POWER,
-  COLOR,
+  LED,
   ANIMATION_FRAME,
   QUERY_STATE
 };
@@ -146,8 +146,8 @@ export type WaitConfig = {
 /*******************************DEFAULT VALUES****************** */
 
 export enum ColorMask {
-  WHITE = 0x0f,
-  COLOR = 0xf0,
+  CCT = 0x0f,
+  RGB = 0xf0,
   BOTH = 0xff,
 };
 

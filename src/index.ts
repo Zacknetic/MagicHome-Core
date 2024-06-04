@@ -6,4 +6,4 @@ export * from './types';
 export * from './errors/errorTypes';
 
 // set env variable to the `tsconfig.json` path before loading mocha (default: './tsconfig.json')
-process.env.TS_NODE_PROJECT = './tsconfig.json'
+process.env['TS_NODE_PROJECT'] = './tsconfig.json'

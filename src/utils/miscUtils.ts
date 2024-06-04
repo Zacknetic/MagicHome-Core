@@ -79,12 +79,12 @@ export function bufferFromByteArray(byteArray: number[], useChecksum = true) {
 	return payload;
 }
 
-export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
+export function deepEqual(object1: Record<string, any>, object2: Record<string, any>, omitKeysArr?: Array<string>) {
 	const keys1 = Object.keys(object1);
 	const keys2 = Object.keys(object2);
 
 	const omitSet = new Set(omitKeysArr ?? []);
-	if (keys1.length !== keys2.length && omitKeysArr?.length <= 0) {
+	if (keys1.length !== keys2.length && (omitKeysArr?.length ?? 0) <= 0) {
 		return false;
 	}
 	for (const key of keys1) {
@@ -180,8 +180,8 @@ export function mergeDeep<T>(target: T, ...sources: Partial<T>[]): T {
 	return mergeDeep(target, ...sources);
 }
 
-export function sleepTimeout(ms) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+export function sleepTimeout(timeoutMS: number) {
+	return new Promise((resolve) => setTimeout(resolve, timeoutMS));
 }
 
 // mutex.ts
@@ -205,6 +205,7 @@ export class Mutex {
     unlock(): void {
         if (this.queue.length > 0) {
             const resolve = this.queue.shift();
+			if (resolve)
             resolve(() => {
                 this.unlock();
             });
@@ -216,7 +217,7 @@ export class Mutex {
 
 
 export async function asyncWaitCurveball() {
-	await new Promise(async (resolve, reject) => {
+	await new Promise(async (resolve, _reject) => {
 		await setTimeout(() => {
 			resolve(true);
 		}, 5000);

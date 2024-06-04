@@ -1,3 +1,5 @@
+//ignore typescript strict mode
+// @ts-nocheck
 import { DeviceManager } from '../MagicHome/DeviceManager';
 import { Transport } from '../MagicHome/Transport';
 import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse, ColorMask, CompleteResponse, DeviceState } from '../types';
@@ -130,7 +132,7 @@ class TestQueryState {
     const commandOptions: CommandOptions = {
       colorAssist: false,
       isEightByteProtocol: false,
-      commandType: CommandType.COLOR,
+      commandType: CommandType.LED,
       waitForResponse: true,
       maxRetries: 5,
     };

@@ -12,8 +12,8 @@ type WaitConfig = {
     emitter: Socket;
     eventName: string;
     timeout: number;
-    writeData?: Buffer;
-    cancellationToken?: CancelTokenObject;
+    writeData?: Buffer | undefined;
+    cancellationToken?: CancelTokenObject | undefined;
 };
 
 class CommandCancelledError extends Error {

@@ -19,10 +19,10 @@ export class Network {
     ).match(/.{1,8}/g)?.map((b) => parseInt(b, 2));
     const inverted = masks?.map((b) => b ^ 255); // eslint-disable-line no-bitwise
     const base = ipaddress.map((block: number, index: number) =>
-      block & masks![index]
+      block & (masks![index] ?? 0)
     ); // eslint-disable-line no-bitwise
     const broadcast = base.map((block: number, index: number) =>
-      block | inverted![index]
+      block | (inverted![index] ?? 0)
     ); // eslint-disable-line no-bitwise
     return {
       base: base.join("."),

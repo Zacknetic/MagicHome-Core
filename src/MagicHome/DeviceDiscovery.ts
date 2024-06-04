@@ -6,15 +6,11 @@ import { Transport } from './Transport';
 import {
 	ProtoDevice,
 	CompleteDevice,
-	CompleteResponse,
 	FetchStateResponse,
 	InterfaceOptions,
 	DeviceBundle,
 } from '../types';
 import {
-	mergeDeep,
-	cloneDeep,
-	combineDeep,
 	sleepTimeout,
 } from '../utils/miscUtils';
 
@@ -29,7 +25,9 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
 		userInterfaces.push('255.255.255.255');
 	} else {
 		for (const subnet of Network.subnets()) {
-			userInterfaces.push(subnet.broadcast);
+			if (subnet['broadcast']) {
+				userInterfaces.push(subnet['broadcast']);
+			}
 		}
 		userInterfaces.push(...customSubnets);
 	}
@@ -55,10 +53,11 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
 		}
 	});
 
-	socket.on('message', (msg, rinfo) => {
+	socket.on('message', (msg, _rinfo) => {
 		if (testCounter > 3) return;
 		const parts = msg.toString().split(',');
 		const [ipAddress, uniqueId, modelNumber] = parts;
+		if(!ipAddress || !uniqueId || !modelNumber) return;
 		if ((net.isIPv4(ipAddress) || net.isIPv6(ipAddress)) && !protoDevicesSet.has(uniqueId)) {
 			protoDevicesList.push({
 				ipAddress,
@@ -70,9 +69,7 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
 		}
 	});
 
-	await sleepTimeout(timeout).catch((e) => {
-		throw 'sleep somehow failed';
-	});
+	await sleepTimeout(timeout);
 	socket.close();
 	return protoDevicesList;
 }
@@ -144,5 +141,5 @@ export function generateInterface(ipAddress: string, timeoutMS: number): DeviceM
 }
 
 function isDockerHostMode(): boolean {
-	return !!process.env.DOCKER_HOST_NETWORK;
+	return !!process.env['DOCKER_HOST_NETWORK'];
 }
