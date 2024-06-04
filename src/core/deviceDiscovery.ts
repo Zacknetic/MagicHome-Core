@@ -1,6 +1,6 @@
 import * as dgram from 'dgram';
 import * as net from 'net';
-import { Network } from '../utils/Network';
+import { Network } from '../utils/networkUtils';
 import { DeviceManager } from './deviceManager';
 import { socketManager } from './socketManager';
 import {

@@ -1,5 +1,5 @@
 import { Socket } from "net";
-import { DeviceManager } from "../MagicHome/deviceManager";
+import { DeviceManager } from "../core/deviceManager";
 import { cloneDeep } from "../utils/miscUtils";
 
 export type ProtoDevice = {

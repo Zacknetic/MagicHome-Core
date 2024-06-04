@@ -1,5 +1,5 @@
-export { discoverDevices, generateCompleteDevices, generateInterface } from './MagicHome';
-export { DeviceManager } from './MagicHome/deviceManager';
+export { discoverDevices, generateCompleteDevices, generateInterface } from './core';
+export { DeviceManager } from './core/deviceManager';
 export { mergeDeep, combineDeep, cloneDeep } from './utils/miscUtils';
 export { isStateEqual } from './utils/coreUtils';
 export * from './models/types';
