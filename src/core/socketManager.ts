@@ -1,6 +1,6 @@
 import net, { Socket } from "net";
 import { BASIC_DEVICE_COMMANDS, CancelTokenObject } from "../models/types";
-import { bufferFromByteArray } from "../utils/miscUtils";
+import { bufferFromByteArray } from "../utils/coreUtils";
 import { Mutex } from "../utils/miscUtils";
 import { MaxWaitTimeError } from "../models/errorTypes";
 
@@ -61,7 +61,7 @@ async function wait(config: WaitConfig): Promise<Buffer> {
     });
 }
 
-export class socketManager {
+export class SocketManager {
     private mutex: Mutex;
     private socket!: Socket;
     private connected = false;

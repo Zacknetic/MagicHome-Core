@@ -1,8 +1,8 @@
 import * as dgram from 'dgram';
 import * as net from 'net';
-import { Network } from '../utils/networkUtils';
-import { DeviceManager } from './deviceManager';
-import { socketManager } from './socketManager';
+
+import { NetworkUtils, sleepTimeout } from '../utils';
+import { DeviceManager, SocketManager } from '../core';
 import {
 	ProtoDevice,
 	CompleteDevice,
@@ -10,21 +10,17 @@ import {
 	InterfaceOptions,
 	DeviceBundle,
 } from '../models/types';
-import {
-	sleepTimeout,
-} from '../utils/miscUtils';
 
 const BROADCAST_PORT: number = 48899;
 const BROADCAST_MAGIC_STRING: string = 'HF-A11ASSISTHREAD';
 
-let testCounter = 0;
 export async function discoverDevices(timeout = 1000, customSubnets: string[] = []): Promise<ProtoDevice[]> {
 	const userInterfaces: string[] = [];
 
 	if (isDockerHostMode()) {
 		userInterfaces.push('255.255.255.255');
 	} else {
-		for (const subnet of Network.subnets()) {
+		for (const subnet of NetworkUtils.subnets()) {
 			if (subnet['broadcast']) {
 				userInterfaces.push(subnet['broadcast']);
 			}
@@ -54,10 +50,9 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
 	});
 
 	socket.on('message', (msg, _rinfo) => {
-		if (testCounter > 3) return;
 		const parts = msg.toString().split(',');
 		const [ipAddress, uniqueId, modelNumber] = parts;
-		if(!ipAddress || !uniqueId || !modelNumber) return;
+		if (!ipAddress || !uniqueId || !modelNumber) return;
 		if ((net.isIPv4(ipAddress) || net.isIPv6(ipAddress)) && !protoDevicesSet.has(uniqueId)) {
 			protoDevicesList.push({
 				ipAddress,
@@ -117,7 +112,7 @@ export async function generateCompleteDevices(
 
 async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions: InterfaceOptions): Promise<DeviceBundle> {
 	try {
-		const transport = new socketManager(protoDevice.ipAddress);
+		const transport = new SocketManager(protoDevice.ipAddress);
 		const deviceManager = new DeviceManager(transport, interfaceOptions);
 
 		const fetchStateResponse: FetchStateResponse = await deviceManager.queryState();
@@ -136,7 +131,7 @@ async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions
 
 
 export function generateInterface(ipAddress: string, timeoutMS: number): DeviceManager {
-	const transport = new socketManager(ipAddress);
+	const transport = new SocketManager(ipAddress);
 	return new DeviceManager(transport, { timeoutMS });
 }
 

@@ -1,7 +1,5 @@
-export { discoverDevices, generateCompleteDevices, generateInterface } from './core';
-export { DeviceManager } from './core/deviceManager';
-export { mergeDeep, combineDeep, cloneDeep } from './utils/miscUtils';
-export { isStateEqual } from './utils/coreUtils';
+export { discoverDevices, generateCompleteDevices, generateInterface, DeviceManager } from './core';
+export { mergeDeep, combineDeep, cloneDeep, isStateEqual } from './utils'
 export * from './models/types';
 export * from './models/errorTypes';
 

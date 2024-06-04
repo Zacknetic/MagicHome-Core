@@ -1,14 +1,12 @@
 import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, InterfaceOptions, CancelTokenObject } from "../models/types";
-import { socketManager } from "./socketManager";
-import { commandToByteArray, isStateEqual } from "../utils/coreUtils";
-import { bufferToFetchStateResponse } from "../utils/miscUtils";
+import { SocketManager } from "./socketManager";
+import { commandToByteArray, isStateEqual, bufferToFetchStateResponse } from "../utils";
 import { CommandCancelledError, MaxCommandRetryError, MaxWaitTimeError } from "../models/errorTypes";
-
 
 export class DeviceManager {
   private currentCommandId = 0;
   private readonly MAX_COMMAND_ID = 2 ** 32 - 1; // Maximum value for a 32-bit integer
-  constructor(private transport: socketManager, private interfaceOptions: InterfaceOptions) { }
+  constructor(private transport: SocketManager, private interfaceOptions: InterfaceOptions) { }
 
   public sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse> {
     this.currentCommandId = this.currentCommandId >= this.MAX_COMMAND_ID ? 0 : this.currentCommandId + 1; // Ensure that the command ID is within the valid range

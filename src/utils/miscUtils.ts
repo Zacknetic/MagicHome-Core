@@ -48,37 +48,6 @@ export function bufferToFetchStateResponse(data: Buffer): FetchStateResponse {
 	return fetchStateResponse;
 }
 
-/**
- * @param data Buffer
- * @returns Buffer
- * @example
- * const data = Buffer.from([0x81, 0x23, 0x23, 0x31, 0x00, 0x00, 0x00, 0x64, 0x64, 0x00, 0x64, 0x00, 0x00, 0x0F]);
- * const checksum = calcChecksum(data);
- * console.log(checksum);
- * <Buffer 81 23 23 31 00 00 00 64 64 00 64 00 00 0f 0f>
- * */
-export function calcChecksum(buffer: Uint8Array): Buffer {
-	let checksum = 0;
-
-	for (const byte of buffer) {
-		checksum += byte;
-	}
-
-	checksum = checksum & 0xff;
-	const finalCommand: Buffer = Buffer.concat([buffer, Buffer.from([checksum])]);
-
-	return finalCommand;
-}
-
-export function bufferFromByteArray(byteArray: number[], useChecksum = true) {
-	const buffer = Buffer.from(byteArray);
-	let payload = buffer;
-
-	if (useChecksum) payload = calcChecksum(buffer);
-
-	return payload;
-}
-
 export function deepEqual(object1: Record<string, any>, object2: Record<string, any>, omitKeysArr?: Array<string>) {
 	const keys1 = Object.keys(object1);
 	const keys2 = Object.keys(object2);

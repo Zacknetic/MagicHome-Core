@@ -1,10 +1,10 @@
 import * as os from "os";
 
-export class Network {
+export class NetworkUtils {
   static subnets(): { [key: string]: string }[] {
-    const network: string[] = Network.network();
+    const network: string[] = NetworkUtils.network();
     const masks: { [key: string]: string }[] = network.map((n) =>
-      Network.masks(n)
+      NetworkUtils.masks(n)
     );
     return masks;
   }
