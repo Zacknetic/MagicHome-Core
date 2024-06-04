@@ -1,14 +1,14 @@
-import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, InterfaceOptions, CancelTokenObject } from "../types";
-import { Transport } from "./Transport";
+import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, InterfaceOptions, CancelTokenObject } from "../models/types";
+import { socketManager } from "./socketManager";
 import { commandToByteArray, isStateEqual } from "../utils/coreUtils";
 import { bufferToFetchStateResponse } from "../utils/miscUtils";
-import { CommandCancelledError, MaxCommandRetryError, MaxWaitTimeError } from "../errors/errorTypes";
+import { CommandCancelledError, MaxCommandRetryError, MaxWaitTimeError } from "../models/errorTypes";
 
 
 export class DeviceManager {
   private currentCommandId = 0;
   private readonly MAX_COMMAND_ID = 2 ** 32 - 1; // Maximum value for a 32-bit integer
-  constructor(private transport: Transport, private interfaceOptions: InterfaceOptions) { }
+  constructor(private transport: socketManager, private interfaceOptions: InterfaceOptions) { }
 
   public sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse> {
     this.currentCommandId = this.currentCommandId >= this.MAX_COMMAND_ID ? 0 : this.currentCommandId + 1; // Ensure that the command ID is within the valid range
@@ -77,13 +77,13 @@ export class DeviceManager {
 
 
     if (!isStateValid) {
-      const errorResponse: Partial<CompleteResponse> = {
-        fetchStateResponse: fetchStateResponse!,
-        responseCode: -4,
-        initialCommandOptions: commandOptions,
-        initialDeviceCommand: deviceCommand,
-        responseMsg: `Invalid state after ${commandOptions.maxRetries - retryCount - 1} retries`
-      };
+      // const errorResponse: Partial<CompleteResponse> = {
+      //   fetchStateResponse: fetchStateResponse!,
+      //   responseCode: -4,
+      //   initialCommandOptions: commandOptions,
+      //   initialDeviceCommand: deviceCommand,
+      //   responseMsg: `Invalid state after ${commandOptions.maxRetries - retryCount - 1} retries`
+      // };
       throw new MaxCommandRetryError(commandOptions.maxRetries, `Command failed after max retries ${commandOptions.maxRetries}`);
     }
 

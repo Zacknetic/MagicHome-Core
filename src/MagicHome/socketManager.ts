@@ -1,8 +1,8 @@
 import net, { Socket } from "net";
-import { BASIC_DEVICE_COMMANDS, CancelTokenObject } from "../types";
+import { BASIC_DEVICE_COMMANDS, CancelTokenObject } from "../models/types";
 import { bufferFromByteArray } from "../utils/miscUtils";
 import { Mutex } from "../utils/miscUtils";
-import { MaxWaitTimeError } from "../errors/errorTypes";
+import { MaxWaitTimeError } from "../models/errorTypes";
 
 const PORT = 5577;
 const SOCKET_TIMEOUT_MS = 10000;
@@ -61,7 +61,7 @@ async function wait(config: WaitConfig): Promise<Buffer> {
     });
 }
 
-export class Transport {
+export class socketManager {
     private mutex: Mutex;
     private socket!: Socket;
     private connected = false;

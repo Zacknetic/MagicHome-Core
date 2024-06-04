@@ -1,10 +1,10 @@
 //ignore typescript strict mode
 // @ts-nocheck
-import { DeviceManager } from '../MagicHome/DeviceManager';
-import { Transport } from '../MagicHome/Transport';
-import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse, ColorMask, CompleteResponse, DeviceState } from '../types';
-import { commandToByteArray, isStateEqual } from '../utils/coreUtils';
-import { bufferFromByteArray, bufferToFetchStateResponse } from '../utils/miscUtils';
+import { DeviceManager } from '../src/MagicHome/DeviceManager';
+import { Transport } from '../src/MagicHome/Transport';
+import { CommandType, CommandOptions, DeviceCommand, FetchStateResponse, ColorMask, CompleteResponse, DeviceState } from '../src/models/types';
+import { commandToByteArray, isStateEqual } from '../src/utils/coreUtils';
+import { bufferFromByteArray, bufferToFetchStateResponse } from '../src/utils/miscUtils';
 
 export interface IAllSettledResult<T> {
   status: 'fulfilled' | 'rejected';

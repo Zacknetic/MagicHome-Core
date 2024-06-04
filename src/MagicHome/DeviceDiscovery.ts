@@ -1,15 +1,15 @@
 import * as dgram from 'dgram';
 import * as net from 'net';
 import { Network } from '../utils/Network';
-import { DeviceManager } from './DeviceManager';
-import { Transport } from './Transport';
+import { DeviceManager } from './deviceManager';
+import { socketManager } from './socketManager';
 import {
 	ProtoDevice,
 	CompleteDevice,
 	FetchStateResponse,
 	InterfaceOptions,
 	DeviceBundle,
-} from '../types';
+} from '../models/types';
 import {
 	sleepTimeout,
 } from '../utils/miscUtils';
@@ -117,7 +117,7 @@ export async function generateCompleteDevices(
 
 async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions: InterfaceOptions): Promise<DeviceBundle> {
 	try {
-		const transport = new Transport(protoDevice.ipAddress);
+		const transport = new socketManager(protoDevice.ipAddress);
 		const deviceManager = new DeviceManager(transport, interfaceOptions);
 
 		const fetchStateResponse: FetchStateResponse = await deviceManager.queryState();
@@ -136,7 +136,7 @@ async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions
 
 
 export function generateInterface(ipAddress: string, timeoutMS: number): DeviceManager {
-	const transport = new Transport(ipAddress);
+	const transport = new socketManager(ipAddress);
 	return new DeviceManager(transport, { timeoutMS });
 }
 

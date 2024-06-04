@@ -1,4 +1,4 @@
-import { FetchStateResponse } from '../types';
+import { FetchStateResponse } from '../models/types';
 
 /**
  * @param data Buffer

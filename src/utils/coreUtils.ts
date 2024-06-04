@@ -1,7 +1,7 @@
-import * as types from '../types';
-import { ColorCommandArray, CommandOptions, DeviceCommand, FetchStateResponse, StateCommandArray } from '../types'
+import * as types from '../models/types';
+import { ColorCommandArray, CommandOptions, DeviceCommand, FetchStateResponse, StateCommandArray } from '../models/types'
 import { deepEqual } from './miscUtils';
-import { CommandType, ColorMask } from '../types';
+import { CommandType, ColorMask } from '../models/types';
 const {
     BASIC_DEVICE_COMMANDS
 } = types;

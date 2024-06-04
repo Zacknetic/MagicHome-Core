@@ -1,6 +1,6 @@
 import { Socket } from "net";
-import { DeviceManager } from "./MagicHome/DeviceManager";
-import { cloneDeep } from "./utils/miscUtils";
+import { DeviceManager } from "../MagicHome/deviceManager";
+import { cloneDeep } from "../utils/miscUtils";
 
 export type ProtoDevice = {
   readonly ipAddress: string;
