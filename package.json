@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "clean": "rimraf ./dist",
     "test:watch": "nodemon --config nodemon.test.json --watch src \"src/specs/*.spec.ts\"",
     "build:watch": "nodemon --config nodemon.build.json",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts"

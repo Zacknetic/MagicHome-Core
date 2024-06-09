@@ -106,10 +106,14 @@ export function cloneDeep<T>(object: T): T {
  * @example
  * const source1: Partial<T> = { a: 1 };
  * const source2: Partial<T> = { b: 2 };
- * const combined = combineDeep<T>(source1, source2);
- * console.log(combined); // { a: 1, b: 2 }
+ * const source3: Partial<T> = { c: 3 };
+ * const source4: Partial<T> = { c: 99 };
+ * const combined = combineDeep<T>(source1, source2, source3, source4);
+ * console.log(combined); // { a: 1, b: 2, c: 99 }
  * console.log(source1); // { a: 1 }
  * console.log(source2); // { b: 2 }
+ * console.log(source3); // { c: 3 }
+ * console.log(source4); // { c: 99 }
  */
 export function combineDeep<T>(...sources: Partial<T>[]): T {
 	if (!sources.length) return {} as T;

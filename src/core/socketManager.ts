@@ -89,6 +89,8 @@ export class SocketManager {
                 eventName: "connect",
                 timeout: SOCKET_TIMEOUT_MS,
                 cancellationToken,
+            }).catch((e) => {
+                throw new Error(e);
             });
             this.connected = true;
             this.startIdleTimer();
@@ -160,6 +162,8 @@ export class SocketManager {
                 timeout,
                 writeData: requestBuffer,
                 cancellationToken,
+            }).catch((e) => {
+                throw new Error(e);
             });
             this.resetIdleTimer();
             return data;

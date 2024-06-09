@@ -1,4 +1,4 @@
-export { discoverDevices, generateCompleteDevices, generateInterface, DeviceManager } from './core';
+export { discoverDevices, generateDeviceBundles, generateInterface, DeviceManager } from './core';
 export { mergeDeep, combineDeep, cloneDeep, isStateEqual } from './utils'
 export * from './models/types';
 export * from './models/errorTypes';

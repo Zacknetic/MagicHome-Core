@@ -75,7 +75,7 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
  * @param timeout number
  * @returns completeDevice[]
  */
-export async function generateCompleteDevices(
+export async function generateDeviceBundles(
 	protoDevices: ProtoDevice[],
 	interfaceOptions: InterfaceOptions,
 	retries = 3
@@ -84,17 +84,25 @@ export async function generateCompleteDevices(
 
 	const completedDevices: DeviceBundle[] = [];
 	let retryProtoDevices: ProtoDevice[] = [];
+	const promiseList: Promise<PromiseSettledResult<DeviceBundle>>[] = [];
 
-	const results = await Promise.allSettled(
-		protoDevices.map(protoDevice =>
-			generateCompleteDevice(protoDevice, interfaceOptions).catch((e) => {
-				console.error('DeviceDiscoveryError: ', e);
-				return Promise.reject({ protoDevice, error: e });
-			})
-		)
-	);
+	for (const protoDevice of protoDevices) {
+		const promise = generateDeviceBundle(protoDevice, interfaceOptions)
+			.then(value => ({ status: 'fulfilled', value } as PromiseFulfilledResult<DeviceBundle>))
+			.catch(reason => ({ status: 'rejected', reason: { protoDevice, reason } } as PromiseRejectedResult));
+		promiseList.push(promise);
+	}
+	// const results = await Promise.allSettled(
+	// 	protoDevices.map(protoDevice =>
+	// 		generateDeviceBundle(protoDevice, interfaceOptions).catch((e) => {
+	// 			console.error('DeviceDiscoveryError: ', e);
+	// 			return Promise.reject({ protoDevice, error: e });
+	// 		})
+	// 	)
+	// );
 
-	results.forEach(result => {
+	const finalResult = await Promise.all(promiseList);
+	finalResult.forEach(result => {
 		if (result.status === 'fulfilled') {
 			completedDevices.push(result.value);
 		} else if (result.reason && result.reason.protoDevice) {
@@ -103,14 +111,14 @@ export async function generateCompleteDevices(
 	});
 
 	if (retryProtoDevices.length > 0 && retries > 0) {
-		const retriedDevices = await generateCompleteDevices(retryProtoDevices, interfaceOptions, retries - 1);
+		const retriedDevices = await generateDeviceBundles(retryProtoDevices, interfaceOptions, retries - 1);
 		completedDevices.push(...retriedDevices);
 	}
 
 	return completedDevices;
 }
 
-async function generateCompleteDevice(protoDevice: ProtoDevice, interfaceOptions: InterfaceOptions): Promise<DeviceBundle> {
+async function generateDeviceBundle(protoDevice: ProtoDevice, interfaceOptions: InterfaceOptions): Promise<DeviceBundle> {
 	try {
 		const transport = new SocketManager(protoDevice.ipAddress);
 		const deviceManager = new DeviceManager(transport, interfaceOptions);
