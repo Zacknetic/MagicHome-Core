@@ -72,12 +72,12 @@ export class SocketManager {
     }
 
     private async connect(cancellationToken?: CancelTokenObject): Promise<void> {
+    
         try {
             this.socket = new net.Socket();
-            const options = {
+            const options: net.SocketConnectOpts= {
                 host: this.ipAddress,
                 port: PORT,
-                timeout: SOCKET_TIMEOUT_MS,
             };
 
             this.socket.on("error", () => { });
@@ -136,7 +136,6 @@ export class SocketManager {
         try {
             const buffer = bufferFromByteArray(byteArray);
             if (!this.connected) {
-                console.log("MHCore send: not connected, connecting...");
                 await this.connect(cancellationToken);
             }
             this.socket.write(buffer);
@@ -150,7 +149,6 @@ export class SocketManager {
         const release = await this.mutex.lock();
         try {
             if (!this.connected) {
-                console.log("MHCore requestState: not connected, connecting...");
                 await this.connect(cancellationToken);
             }
 

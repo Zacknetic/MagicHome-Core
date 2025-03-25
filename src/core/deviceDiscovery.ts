@@ -81,7 +81,6 @@ export async function generateDeviceBundles(
 	retries = 3
 ): Promise<DeviceBundle[]> {
 	if (!protoDevices || protoDevices.length < 1) return [];
-
 	const completedDevices: DeviceBundle[] = [];
 	let retryProtoDevices: ProtoDevice[] = [];
 	const promiseList: Promise<PromiseSettledResult<DeviceBundle>>[] = [];
@@ -92,14 +91,6 @@ export async function generateDeviceBundles(
 			.catch(reason => ({ status: 'rejected', reason: { protoDevice, reason } } as PromiseRejectedResult));
 		promiseList.push(promise);
 	}
-	// const results = await Promise.allSettled(
-	// 	protoDevices.map(protoDevice =>
-	// 		generateDeviceBundle(protoDevice, interfaceOptions).catch((e) => {
-	// 			console.error('DeviceDiscoveryError: ', e);
-	// 			return Promise.reject({ protoDevice, error: e });
-	// 		})
-	// 	)
-	// );
 
 	const finalResult = await Promise.all(promiseList);
 	finalResult.forEach(result => {
@@ -109,7 +100,6 @@ export async function generateDeviceBundles(
 			retryProtoDevices.push(result.reason.protoDevice);
 		}
 	});
-
 	if (retryProtoDevices.length > 0 && retries > 0) {
 		const retriedDevices = await generateDeviceBundles(retryProtoDevices, interfaceOptions, retries - 1);
 		completedDevices.push(...retriedDevices);

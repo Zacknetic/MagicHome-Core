@@ -93,7 +93,7 @@ export class DeviceManager {
       responseMsg: `State validity verified ${isStateValid} after ${commandOptions.maxRetries - retryCount - 1} retries`
     };
 
-    return completeResponse;
+    return completeResponse; 
   }
 
   private async sendCommandToTransport(deviceCommand: DeviceCommand, commandOptions: CommandOptions) {

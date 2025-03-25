@@ -6,7 +6,7 @@ const {
     BASIC_DEVICE_COMMANDS
 } = types;
 
-
+ 
 /**
  * Converts the device command to a byte array. 
  * @param deviceCommand 
