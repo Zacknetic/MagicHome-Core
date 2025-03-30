@@ -1,77 +1,110 @@
-import * as types from '../types';
-import { ICommandOptions, IDeviceCommand, IDeviceState, ICompleteResponse, DEFAULT_COMPLETE_RESPONSE, COLOR_MASKS, IFetchStateResponse } from '../types'
+import * as types from '../models/types';
+import { ColorCommandArray, CommandOptions, DeviceCommandRGB, FetchStateResponse, StateCommandArray } from '../models/types'
 import { deepEqual } from './miscUtils';
+import { CommandType, ColorMask } from '../models/types';
 const {
-    COLOR_MASKS: { WHITE, COLOR, BOTH },
-    DEVICE_COMMAND_BYTES: { COMMAND_POWER_OFF, COMMAND_POWER_ON, COMMAND_QUERY_STATE },
-    COMMAND_TYPE: { POWER_COMMAND, COLOR_COMMAND, ANIMATION_FRAME, QUERY_COMMAND }
+    BASIC_DEVICE_COMMANDS
 } = types;
 
+ 
+/**
+ * Converts the device command to a byte array. 
+ * @param deviceCommand 
+ * @param commandOptions 
+ * @returns ColorCommandArray | StateCommandArray
+ * 
+ */
+export function commandToByteArray(deviceCommand: DeviceCommandRGB, commandOptions: CommandOptions): ColorCommandArray | StateCommandArray {
+    let commandByteArray: ColorCommandArray | StateCommandArray;
 
-export function commandToByteArray(deviceCommand: IDeviceCommand, commandOptions: ICommandOptions): number[] {
-    let commandByteArray: number[];
-    let { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
     switch (commandOptions.commandType) {
-        case POWER_COMMAND:
+        case CommandType.POWER: // construct the power command byte array
             // if (!this.testLatestPowerCommand(deviceCommand.isOn)) {
             //     const transportResponse: ITransportResponse = { responseCode: -5, deviceState: null, deviceCommand }
             //     throw transportResponse;
             // }
-            // construct the power command byte array
-            commandByteArray = deviceCommand.isOn ? COMMAND_POWER_ON : COMMAND_POWER_OFF;
+
+            commandByteArray = deviceCommand.isOn ? BASIC_DEVICE_COMMANDS.POWER_ON : BASIC_DEVICE_COMMANDS.POWER_OFF;
             break;
 
-        case COLOR_COMMAND:
+        case CommandType.LED: // Constructs the color command byte array
             //test for bad or insufficient data?
-            //construct the color command byte array
 
-
-            if (!colorMask) deviceCommand.colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
-
-            if (commandOptions.isEightByteProtocol) {
-                commandByteArray = [0x31, red, green, blue, warmWhite, colorMask, 0x0F]; //8th byte checksum calculated later in send()
-            } else {
-                commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, colorMask, 0x0F]; //9 byte
-            }
+            commandByteArray = constructColorCommand(deviceCommand, commandOptions);
             break;
 
-        case QUERY_COMMAND:
-            // if (this.queueSize > 0) {
-            //     const transportResponse: ITransportResponse = { responseCode: 0, deviceState: null, deviceCommand }
-            //     throw transportResponse;
-            // }
+        case CommandType.QUERY_STATE:
             //construct query command byte array
-            commandByteArray = COMMAND_QUERY_STATE;
+            commandByteArray = BASIC_DEVICE_COMMANDS.QUERY_STATE;
             break;
 
-        case ANIMATION_FRAME:
-           //test for bad or insufficient data?
-            //construct the color command byte array
+        case CommandType.ANIMATION_FRAME:
+            //test for bad or insufficient data?
 
-            if (!colorMask) deviceCommand.colorMask = Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? COLOR_MASKS.COLOR : COLOR_MASKS.WHITE;
-
-            if (commandOptions.isEightByteProtocol) {
-                commandByteArray = [0x31, red, green, blue, warmWhite, colorMask, 0x0F]; //8th byte checksum calculated later in send()
-            } else {
-                commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, colorMask, 0x0F]; //9 byte
-            }
+            commandByteArray = constructColorCommand(deviceCommand, commandOptions);
             break;
-        default:
-            const completeResponse: ICompleteResponse = Object.assign({}, DEFAULT_COMPLETE_RESPONSE, { responseCode: -1, deviceState: null, deviceCommand });
     }
 
     return commandByteArray;
 }
 
-export function isStateEqual(deviceCommand: IDeviceCommand, deviceResponse: IFetchStateResponse, commandType: string): boolean {
+function constructColorCommand(deviceCommand: DeviceCommandRGB, commandOptions: CommandOptions): ColorCommandArray {
+    let commandByteArray: ColorCommandArray;
+    const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
+    // console.log("Color Command: ", deviceCommand, commandOptions)
+    let newColorMask = colorMask ? colorMask : Math.max(red, green, blue) > Math.max(warmWhite, coldWhite) ? ColorMask.RGB : ColorMask.CCT;
+;
+    if (commandOptions.isEightByteProtocol) {
+        commandByteArray = [0x31, red, green, blue, warmWhite, newColorMask, 0x0F]; //8th byte checksum calculated later in send()
+    } else {
+        commandByteArray = [0x31, red, green, blue, warmWhite, coldWhite, newColorMask, 0x0F]; //9 byte
+    }
 
-    const { deviceState } = deviceResponse;
+    return commandByteArray;
+}
+
+export function isStateEqual(deviceCommand: DeviceCommandRGB, deviceResponse: FetchStateResponse, commandType: CommandType): boolean {
+    if (!deviceResponse || !deviceCommand) throw new Error("Invalid arguments");
+    const { ledStateRGB: deviceState } = deviceResponse;
     if (deviceState.isOn == false && deviceCommand.isOn == false) return true;
     let omitItems;
-    if (commandType == POWER_COMMAND) omitItems = ["RGB", "CCT"];
-    else if (commandType == ANIMATION_FRAME) omitItems = ["isOn"];
-    else if (deviceCommand.colorMask == WHITE) omitItems = ["RGB"];
+    if (commandType == CommandType.POWER) omitItems = ["RGB", "CCT"];
+    else if (commandType == CommandType.ANIMATION_FRAME) omitItems = ["isOn"];
+    else if (deviceCommand.colorMask == ColorMask.CCT) omitItems = ["RGB"];
     else omitItems = ["CCT"]
     const isEqual = deepEqual(deviceCommand, deviceState, ['colorMask', ...omitItems]);
     return isEqual;
 }
+
+  
+export function bufferFromByteArray(byteArray: number[], useChecksum = true): Buffer {
+    const buffer = Buffer.from(byteArray);
+    let payload = buffer;
+  
+    if (useChecksum) payload = calcChecksum(buffer);
+  
+    return payload;
+  }
+
+/**
+ * @param data Buffer
+ * @returns Buffer
+ * @example
+ * const data = Buffer.from([0x81, 0x23, 0x23, 0x31, 0x00, 0x00, 0x00, 0x64, 0x64, 0x00, 0x64, 0x00, 0x00, 0x0F]);
+ * const checksum = calcChecksum(data);
+ * console.log(checksum);
+ * <Buffer 81 23 23 31 00 00 00 64 64 00 64 00 00 0f 0f>
+ * */
+export function calcChecksum(buffer: Uint8Array): Buffer {
+	let checksum = 0;
+
+	for (const byte of buffer) {
+		checksum += byte;
+	}
+
+	checksum = checksum & 0xff;
+	const finalCommand: Buffer = Buffer.concat([buffer, Buffer.from([checksum])]);
+
+	return finalCommand;
+}
+  

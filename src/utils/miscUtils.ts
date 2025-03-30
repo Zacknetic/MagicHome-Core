@@ -1,4 +1,4 @@
-import { IFetchStateResponse } from '../types';
+import { FetchStateResponse } from '../models/types';
 
 /**
  * @param data Buffer
@@ -20,12 +20,12 @@ import { IFetchStateResponse } from '../types';
  *   }
  * }
  */
-export function bufferToFetchStateResponse(data: Buffer): IFetchStateResponse {
+export function bufferToFetchStateResponse(data: Buffer): FetchStateResponse {
 	if (!Buffer.isBuffer(data) || data.length < 14)
 		throw new Error('Invalid buffer' + data.toString('hex'));
 
-	const fetchStateResponse: IFetchStateResponse = {
-		deviceState: {
+	const fetchStateResponse: FetchStateResponse = {
+		ledStateRGB: {
 			isOn: data.readUInt8(2) === 0x23,
 			RGB: {
 				red: data.readUInt8(6),
@@ -48,43 +48,12 @@ export function bufferToFetchStateResponse(data: Buffer): IFetchStateResponse {
 	return fetchStateResponse;
 }
 
-/**
- * @param data Buffer
- * @returns Buffer
- * @example
- * const data = Buffer.from([0x81, 0x23, 0x23, 0x31, 0x00, 0x00, 0x00, 0x64, 0x64, 0x00, 0x64, 0x00, 0x00, 0x0F]);
- * const checksum = calcChecksum(data);
- * console.log(checksum);
- * <Buffer 81 23 23 31 00 00 00 64 64 00 64 00 00 0f 0f>
- * */
-export function calcChecksum(buffer: Uint8Array): Buffer {
-	let checksum = 0;
-
-	for (const byte of buffer) {
-		checksum += byte;
-	}
-
-	checksum = checksum & 0xff;
-	const finalCommand: Buffer = Buffer.concat([buffer, Buffer.from([checksum])]);
-
-	return finalCommand;
-}
-
-export function bufferFromByteArray(byteArray: number[], useChecksum = true) {
-	const buffer = Buffer.from(byteArray);
-	let payload = buffer;
-
-	if (useChecksum) payload = calcChecksum(buffer);
-
-	return payload;
-}
-
-export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
+export function deepEqual(object1: Record<string, any>, object2: Record<string, any>, omitKeysArr?: Array<string>) {
 	const keys1 = Object.keys(object1);
 	const keys2 = Object.keys(object2);
 
 	const omitSet = new Set(omitKeysArr ?? []);
-	if (keys1.length !== keys2.length && omitKeysArr?.length <= 0) {
+	if (keys1.length !== keys2.length && (omitKeysArr?.length ?? 0) <= 0) {
 		return false;
 	}
 	for (const key of keys1) {
@@ -100,15 +69,6 @@ export function deepEqual(object1, object2, omitKeysArr?: Array<string>) {
 		}
 	}
 	return true;
-}
-
-/**
- * Deep merge two objects.
- * @param target
- * @param ...sources
- */
-function isObject(item: any): item is Record<string, any> {
-	return item && typeof item === 'object' && !Array.isArray(item);
 }
 
 /**
@@ -137,10 +97,14 @@ export function cloneDeep<T>(object: T): T {
  * @example
  * const source1: Partial<T> = { a: 1 };
  * const source2: Partial<T> = { b: 2 };
- * const combined = combineDeep<T>(source1, source2);
- * console.log(combined); // { a: 1, b: 2 }
+ * const source3: Partial<T> = { c: 3 };
+ * const source4: Partial<T> = { c: 99 };
+ * const combined = combineDeep<T>(source1, source2, source3, source4);
+ * console.log(combined); // { a: 1, b: 2, c: 99 }
  * console.log(source1); // { a: 1 }
  * console.log(source2); // { b: 2 }
+ * console.log(source3); // { c: 3 }
+ * console.log(source4); // { c: 99 }
  */
 export function combineDeep<T>(...sources: Partial<T>[]): T {
 	if (!sources.length) return {} as T;
@@ -180,47 +144,83 @@ export function mergeDeep<T>(target: T, ...sources: Partial<T>[]): T {
 	return mergeDeep(target, ...sources);
 }
 
-export function sleepTimeout(ms) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+export function sleepTimeout(timeoutMS: number) {
+	return new Promise((resolve) => setTimeout(resolve, timeoutMS));
 }
 
+// mutex.ts
 export class Mutex {
-	private locked = false;
-	private queue: ((value: (() => void) | PromiseLike<() => void>) => void)[] =
-		[];
+    private locked = false;
+    private queue: ((value: (() => void) | PromiseLike<() => void>) => void)[] = [];
 
-	async lock(): Promise<() => void> {
-		if (this.locked) {
-			return new Promise(
-				(
-					resolve: (value: (() => void) | PromiseLike<() => void>) => void,
-					reject: (reason?: any) => void
-				) => {
-					this.queue.push(resolve);
-				}
-			);
-		} else {
-			this.locked = true;
-			return () => {
-				this.unlock();
-			};
-		}
-	}
+    async lock(): Promise<() => void> {
+        if (this.locked) {
+            return new Promise((resolve) => {
+                this.queue.push(resolve);
+            });
+        } else {
+            this.locked = true;
+            return () => {
+                this.unlock();
+            };
+        }
+    }
 
-	unlock(): void {
-		if (this.queue.length > 0) {
-			const resolve = this.queue.shift();
-			resolve(() => {
-				this.unlock();
-			});
-		} else {
-			this.locked = false;
-		}
-	}
+    unlock(): void {
+        if (this.queue.length > 0) {
+            const resolve = this.queue.shift();
+			if (resolve)
+            resolve(() => {
+                this.unlock();
+            });
+        } else {
+            this.locked = false;
+        }
+    }
 }
 
-export async function asyncWaitCurveball(timeout) {
-	await new Promise(async (resolve, reject) => {
+function isObject(item: any): item is Record<string, any> {
+	return item && typeof item === 'object' && !Array.isArray(item);
+}
+
+export function smartCombineUsingGuide<T>(guide: T, ...fragments: any[]): Partial<T> {
+	const result: any = {};
+
+	for (const fragment of fragments) {
+		for (const [key, value] of Object.entries(fragment)) {
+			insertUsingGuide(result, guide, key, value);
+		}
+	}
+
+	return result;
+}
+
+function insertUsingGuide(target: any, guide: any, key: string, value: any): boolean {
+	if (!isObject(guide)) return false;
+
+	for (const guideKey of Object.keys(guide)) {
+		const guideVal = guide[guideKey];
+
+		// Found key match at this level
+		if (guideKey === key) {
+			target[key] = value;
+			return true;
+		}
+
+		// Look deeper if guide value is an object
+		if (isObject(guideVal)) {
+			if (!target[guideKey]) target[guideKey] = {};
+
+			const inserted = insertUsingGuide(target[guideKey], guideVal, key, value);
+			if (inserted) return true;
+		}
+	}
+
+	return false;
+}
+
+export async function asyncWaitCurveball() {
+	await new Promise(async (resolve, _reject) => {
 		await setTimeout(() => {
 			resolve(true);
 		}, 5000);
