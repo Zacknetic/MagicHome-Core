@@ -45,6 +45,7 @@ export async function discoverDevices(timeout = 1000, customSubnets: string[] = 
 	socket.on('listening', () => {
 		socket.setBroadcast(true);
 		for (const userInterface of userInterfaces) {
+			console.log('Sending broadcast to:', userInterface);
 			socket.send(BROADCAST_MAGIC_STRING, BROADCAST_PORT, userInterface);
 		}
 	});
@@ -96,6 +97,7 @@ export async function generateDeviceBundles(
 	finalResult.forEach(result => {
 		if (result.status === 'fulfilled') {
 			completedDevices.push(result.value);
+			// result.value.deviceManager.sendCommand(({ isOn: true, RGB: { red: 0, green: 255, blue: 0 }, CCT: { warmWhite: 0, coldWhite: 0 } }), { commandType: CommandType.LED, colorAssist: true, isEightByteProtocol: false, waitForResponse: true, maxRetries: 3 });
 		} else if (result.reason && result.reason.protoDevice) {
 			retryProtoDevices.push(result.reason.protoDevice);
 		}
@@ -104,7 +106,7 @@ export async function generateDeviceBundles(
 		const retriedDevices = await generateDeviceBundles(retryProtoDevices, interfaceOptions, retries - 1);
 		completedDevices.push(...retriedDevices);
 	}
-
+	
 	return completedDevices;
 }
 
@@ -114,7 +116,6 @@ async function generateDeviceBundle(protoDevice: ProtoDevice, interfaceOptions: 
 		const deviceManager = new DeviceManager(transport, interfaceOptions);
 
 		const fetchStateResponse: FetchStateResponse = await deviceManager.queryState();
-
 		const completeDevice: CompleteDevice = {
 			protoDevice,
 			fetchStateResponse,

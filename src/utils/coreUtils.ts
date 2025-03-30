@@ -1,5 +1,5 @@
 import * as types from '../models/types';
-import { ColorCommandArray, CommandOptions, DeviceCommand, FetchStateResponse, StateCommandArray } from '../models/types'
+import { ColorCommandArray, CommandOptions, DeviceCommandRGB, FetchStateResponse, StateCommandArray } from '../models/types'
 import { deepEqual } from './miscUtils';
 import { CommandType, ColorMask } from '../models/types';
 const {
@@ -14,7 +14,7 @@ const {
  * @returns ColorCommandArray | StateCommandArray
  * 
  */
-export function commandToByteArray(deviceCommand: DeviceCommand, commandOptions: CommandOptions): ColorCommandArray | StateCommandArray {
+export function commandToByteArray(deviceCommand: DeviceCommandRGB, commandOptions: CommandOptions): ColorCommandArray | StateCommandArray {
     let commandByteArray: ColorCommandArray | StateCommandArray;
 
     switch (commandOptions.commandType) {
@@ -48,7 +48,7 @@ export function commandToByteArray(deviceCommand: DeviceCommand, commandOptions:
     return commandByteArray;
 }
 
-function constructColorCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): ColorCommandArray {
+function constructColorCommand(deviceCommand: DeviceCommandRGB, commandOptions: CommandOptions): ColorCommandArray {
     let commandByteArray: ColorCommandArray;
     const { RGB: { red, green, blue }, CCT: { warmWhite, coldWhite }, colorMask } = deviceCommand;
     // console.log("Color Command: ", deviceCommand, commandOptions)
@@ -63,9 +63,9 @@ function constructColorCommand(deviceCommand: DeviceCommand, commandOptions: Com
     return commandByteArray;
 }
 
-export function isStateEqual(deviceCommand: DeviceCommand, deviceResponse: FetchStateResponse, commandType: CommandType): boolean {
+export function isStateEqual(deviceCommand: DeviceCommandRGB, deviceResponse: FetchStateResponse, commandType: CommandType): boolean {
     if (!deviceResponse || !deviceCommand) throw new Error("Invalid arguments");
-    const { deviceState } = deviceResponse;
+    const { ledStateRGB: deviceState } = deviceResponse;
     if (deviceState.isOn == false && deviceCommand.isOn == false) return true;
     let omitItems;
     if (commandType == CommandType.POWER) omitItems = ["RGB", "CCT"];

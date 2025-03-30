@@ -25,7 +25,7 @@ export function bufferToFetchStateResponse(data: Buffer): FetchStateResponse {
 		throw new Error('Invalid buffer' + data.toString('hex'));
 
 	const fetchStateResponse: FetchStateResponse = {
-		deviceState: {
+		ledStateRGB: {
 			isOn: data.readUInt8(2) === 0x23,
 			RGB: {
 				red: data.readUInt8(6),
@@ -69,15 +69,6 @@ export function deepEqual(object1: Record<string, any>, object2: Record<string, 
 		}
 	}
 	return true;
-}
-
-/**
- * Deep merge two objects.
- * @param target
- * @param ...sources
- */
-function isObject(item: any): item is Record<string, any> {
-	return item && typeof item === 'object' && !Array.isArray(item);
 }
 
 /**
@@ -188,6 +179,45 @@ export class Mutex {
     }
 }
 
+function isObject(item: any): item is Record<string, any> {
+	return item && typeof item === 'object' && !Array.isArray(item);
+}
+
+export function smartCombineUsingGuide<T>(guide: T, ...fragments: any[]): Partial<T> {
+	const result: any = {};
+
+	for (const fragment of fragments) {
+		for (const [key, value] of Object.entries(fragment)) {
+			insertUsingGuide(result, guide, key, value);
+		}
+	}
+
+	return result;
+}
+
+function insertUsingGuide(target: any, guide: any, key: string, value: any): boolean {
+	if (!isObject(guide)) return false;
+
+	for (const guideKey of Object.keys(guide)) {
+		const guideVal = guide[guideKey];
+
+		// Found key match at this level
+		if (guideKey === key) {
+			target[key] = value;
+			return true;
+		}
+
+		// Look deeper if guide value is an object
+		if (isObject(guideVal)) {
+			if (!target[guideKey]) target[guideKey] = {};
+
+			const inserted = insertUsingGuide(target[guideKey], guideVal, key, value);
+			if (inserted) return true;
+		}
+	}
+
+	return false;
+}
 
 export async function asyncWaitCurveball() {
 	await new Promise(async (resolve, _reject) => {

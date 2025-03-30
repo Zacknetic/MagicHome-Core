@@ -1,4 +1,4 @@
-import { CommandOptions, DeviceCommand, CompleteResponse, FetchStateResponse, InterfaceOptions, CancelTokenObject } from "../models/types";
+import { CommandOptions, DeviceCommandRGB, CompleteResponse, FetchStateResponse, InterfaceOptions, CancelTokenObject } from "../models/types";
 import { SocketManager } from "./socketManager";
 import { commandToByteArray, isStateEqual, bufferToFetchStateResponse } from "../utils";
 import { CommandCancelledError, MaxCommandRetryError, MaxWaitTimeError } from "../models/errorTypes";
@@ -8,7 +8,7 @@ export class DeviceManager {
   private readonly MAX_COMMAND_ID = 2 ** 32 - 1; // Maximum value for a 32-bit integer
   constructor(private transport: SocketManager, private interfaceOptions: InterfaceOptions) { }
 
-  public sendCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions): Promise<CompleteResponse> {
+  public sendCommand(deviceCommand: DeviceCommandRGB, commandOptions: CommandOptions): Promise<CompleteResponse> {
     this.currentCommandId = this.currentCommandId >= this.MAX_COMMAND_ID ? 0 : this.currentCommandId + 1; // Ensure that the command ID is within the valid range
     const commandId = this.currentCommandId; // Store the current command ID
 
@@ -29,7 +29,7 @@ export class DeviceManager {
    * @returns Promise<CompleteResponse>
    * @throws CommandCancelledError, MaxCommandRetryError, MaxWaitTimeError
    */
-  private async processCommand(deviceCommand: DeviceCommand, commandOptions: CommandOptions, cancellationToken: CancelTokenObject, commandId: number): Promise<CompleteResponse> {
+  private async processCommand(deviceCommand: DeviceCommandRGB, commandOptions: CommandOptions, cancellationToken: CancelTokenObject, commandId: number): Promise<CompleteResponse> {
     let fetchStateResponse: FetchStateResponse;
     let isStateValid = false;
     let retryCount = commandOptions.maxRetries || 0;
@@ -96,7 +96,7 @@ export class DeviceManager {
     return completeResponse; 
   }
 
-  private async sendCommandToTransport(deviceCommand: DeviceCommand, commandOptions: CommandOptions) {
+  private async sendCommandToTransport(deviceCommand: DeviceCommandRGB, commandOptions: CommandOptions) {
     const byteArray = commandToByteArray(deviceCommand, commandOptions);
     await this.transport.send(byteArray);
   }

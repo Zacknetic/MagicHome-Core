@@ -29,28 +29,41 @@ export type ColorRGB = {
   blue: number;
 };
 
-export type IColorCCT = {
+export type ColorCCT = {
   warmWhite: number;
   coldWhite: number;
 };
 
+export type ColorHSV = {
+  hue: number;
+  saturation: number;
+  value: number;
+};
+
 export type CompleteResponse = {
   fetchStateResponse: FetchStateResponse;
-  initialDeviceCommand: DeviceCommand;
+  initialDeviceCommand: DeviceCommandRGB;
   initialCommandOptions: CommandOptions;
   responseCode: number;
   responseMsg?: string;
 };
 
 export type FetchStateResponse = {
-  deviceState: DeviceState;
+  ledStateRGB: LEDStateRGB;
   deviceMetaData: DeviceMetaData;
 };
 
-export type DeviceCommand = {
+export type DeviceCommandRGB = {
   isOn: boolean;
   RGB: ColorRGB;
-  CCT: IColorCCT;
+  CCT: ColorCCT;
+  colorMask?: number;
+};
+
+export type DeviceCommandHSV = {
+  isOn: boolean;
+  HSV: ColorHSV;
+  CCT: ColorCCT;
   colorMask?: number;
 };
 
@@ -62,10 +75,16 @@ export type CommandOptions = {
   readonly maxRetries: number;
 };
 
-export type DeviceState = {
+export type LEDStateRGB = {
   isOn: boolean;
   RGB: ColorRGB;
-  CCT: IColorCCT;
+  CCT: ColorCCT;
+};
+
+export type ledStateHSV = {
+  isOn: boolean;
+  HSV: ColorHSV;
+  CCT: ColorCCT;
 };
 
 export type DeviceMetaData = {
@@ -161,18 +180,18 @@ export const DEFAULT_RGB: ColorRGB = {
   blue: 0,
 };
 
-export const DEFAULT_CCT: IColorCCT = {
+export const DEFAULT_CCT: ColorCCT = {
   warmWhite: 0,
   coldWhite: 0,
 };
 
-export const DEVICE_STATE_DEFAULTS: DeviceState = {
+export const DEVICE_STATE_DEFAULTS: LEDStateRGB = {
   isOn: false,
   RGB: cloneDeep(DEFAULT_RGB),
   CCT: cloneDeep(DEFAULT_CCT),
 };
 
-export const DEFAULT_COMMAND: DeviceCommand = {
+export const DEFAULT_COMMAND: DeviceCommandRGB = {
   isOn: true,
   RGB: cloneDeep(DEFAULT_RGB),
   CCT: cloneDeep(DEFAULT_CCT),
